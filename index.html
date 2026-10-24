@@ -409,6 +409,11 @@
         </div>
       </div>
 
+      <!-- Game Mode Progress Bar Overlay -->
+      <div id="game-progress-wrapper" class="hud-progress-wrapper" style="position:absolute; top:calc(var(--safe-y) + 4rem); left:var(--safe-x); width:calc(100% - 2 * var(--safe-x)); display:none; height:6px;">
+        <div id="game-progress-fill" class="hud-progress-bar" style="background:linear-gradient(90deg, #ec4899, #38bdf8);"></div>
+      </div>
+
       <!-- VIRTUAL RUN COCKPIT HUD (Visible only during Virtual Run) -->
       <div id="run-cockpit-hud" class="run-cockpit-hud" style="display:none;">
         <div class="run-metrics-grid">
@@ -453,6 +458,10 @@
         <!-- Video Progress Bar with Checkpoints -->
         <div class="hud-progress-wrapper">
           <div id="hud-progress-fill" class="hud-progress-bar"></div>
+        </div>
+
+        <div id="run-status-badge" style="font-size:0.85rem; font-weight:800; color:var(--accent-run); text-align:center; padding-top:0.3rem; letter-spacing:0.04em;">
+          VITESSE MINIMALE (0.25x) - EN MARCHE LENTE
         </div>
       </div>
 

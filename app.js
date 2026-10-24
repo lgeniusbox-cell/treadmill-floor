@@ -1142,6 +1142,9 @@
       this.item = null;
       this.timeline = [];
       this.evaluatedEvents = new Set();
+      this.activeFX = [];
+      this.strikePulse = 0;
+      this.targetPulseColor = '#38bdf8';
       this.state = {
         score: 0,
         combo: 0,
@@ -1151,8 +1154,6 @@
         misses: 0,
         perfectHits: 0,
         goodHits: 0,
-        characterState: 'RUNNING',
-        charAnimTimer: 0,
         lastFeedback: null,
         feedbackTimer: 0
       };
@@ -1172,6 +1173,8 @@
       this.active = true;
       this.item = item;
       this.evaluatedEvents.clear();
+      this.activeFX = [];
+      this.strikePulse = 0;
 
       // Normalize timeline events with tolerant defaults
       const rawTimeline = item.raw?.game?.timeline || [];
@@ -1199,7 +1202,7 @@
       this.state.misses = 0;
       this.state.perfectHits = 0;
       this.state.goodHits = 0;
-      this.state.characterState = 'RUNNING';
+      this.state.lastFeedback = null;
 
       this.resizeCanvas();
       this.loop();
@@ -1208,6 +1211,7 @@
     stop() {
       this.active = false;
       if (this.animFrame) cancelAnimationFrame(this.animFrame);
+      this.activeFX = [];
       if (this.ctx && this.canvas) {
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
       }
@@ -1228,12 +1232,16 @@
     handleActionInput(actionName) {
       if (!this.active) return;
 
-      this.state.characterState = actionName;
-      this.state.charAnimTimer = performance.now();
-
       const curTime = tvPlayer.getCurrentTime() + (profile.profile.calibrationOffsetMs / 1000);
       const perfWin = CONFIG.game.timingWindow.perfectMs / 1000;
       const goodWin = CONFIG.game.timingWindow.goodMs / 1000;
+      const w = this.canvas ? this.canvas.width : window.innerWidth;
+      const h = this.canvas ? this.canvas.height : window.innerHeight;
+      const strikeX = w * 0.32;
+      const strikeY = h * 0.72;
+
+      // Always trigger dynamic visual animation over the video on player action
+      this.spawnActionFX(actionName, strikeX, strikeY);
 
       // Find nearest non-evaluated required event
       let closest = null;
@@ -1258,20 +1266,24 @@
 
           if (minDiff <= (closest.window.before || perfWin)) {
             // PERFECT HIT
-            this.state.score += closest.points * this.state.multiplier;
+            const pts = closest.points * this.state.multiplier;
+            this.state.score += pts;
             this.state.combo++;
             this.state.perfectHits++;
             this.state.maxCombo = Math.max(this.state.maxCombo, this.state.combo);
             this.state.multiplier = Math.min(CONFIG.game.scoring.maxMultiplier, 1 + Math.floor(this.state.combo / CONFIG.game.scoring.comboStep));
-            this.showFeedback("PERFECT !", "#10b981");
+            this.showFeedback("PERFECT !", "#10b981", `+${pts}`);
+            this.spawnHitBurst(strikeX, strikeY, '#10b981');
             sound.play('success');
           } else {
             // GOOD HIT
-            this.state.score += Math.floor(closest.points / 2) * this.state.multiplier;
+            const pts = Math.floor(closest.points / 2) * this.state.multiplier;
+            this.state.score += pts;
             this.state.combo++;
             this.state.goodHits++;
             this.state.maxCombo = Math.max(this.state.maxCombo, this.state.combo);
-            this.showFeedback("BIEN !", "#38bdf8");
+            this.showFeedback("BIEN !", "#38bdf8", `+${pts}`);
+            this.spawnHitBurst(strikeX, strikeY, '#38bdf8');
             sound.play('success');
           }
         } else {
@@ -1294,9 +1306,398 @@
       }
     }
 
-    showFeedback(text, color) {
-      this.state.lastFeedback = { text, color };
-      this.state.feedbackTimer = performance.now() + 650;
+    showFeedback(text, color, pointsText = '') {
+      this.state.lastFeedback = { text, color, pointsText, time: performance.now() };
+      this.state.feedbackTimer = performance.now() + 750;
+    }
+
+    spawnHitBurst(x, y, color) {
+      const now = performance.now();
+      const fx = {
+        action: 'HIT_BURST',
+        color,
+        startTime: now,
+        duration: 450,
+        x,
+        y,
+        particles: []
+      };
+
+      for (let i = 0; i < 22; i++) {
+        const ang = Math.random() * Math.PI * 2;
+        const spd = 4 + Math.random() * 10;
+        fx.particles.push({
+          x,
+          y,
+          vx: Math.cos(ang) * spd,
+          vy: Math.sin(ang) * spd,
+          life: 1.0,
+          decay: 0.03 + Math.random() * 0.03,
+          size: 3 + Math.random() * 4,
+          color: Math.random() > 0.3 ? color : '#fff'
+        });
+      }
+      this.activeFX.push(fx);
+    }
+
+    spawnActionFX(actionName, strikeX, strikeY) {
+      const now = performance.now();
+      const normAction = (actionName || '').toUpperCase().replace(/\s+/g, '_');
+      const color = this.getActionColor(actionName);
+      this.strikePulse = now + 350;
+      this.targetPulseColor = color;
+
+      const fx = {
+        action: normAction,
+        color,
+        startTime: now,
+        duration: 550,
+        x: strikeX,
+        y: strikeY,
+        particles: []
+      };
+
+      if (normAction === 'SLASH') {
+        fx.duration = 450;
+        for (let i = 0; i < 28; i++) {
+          const angle = -Math.PI / 4 + (Math.random() - 0.5) * 1.3;
+          const spd = 6 + Math.random() * 14;
+          fx.particles.push({
+            x: strikeX + (Math.random() - 0.5) * 60,
+            y: strikeY + (Math.random() - 0.5) * 60,
+            vx: Math.cos(angle) * spd,
+            vy: Math.sin(angle) * spd,
+            life: 1.0,
+            decay: 0.025 + Math.random() * 0.03,
+            size: 2 + Math.random() * 4,
+            color: Math.random() > 0.3 ? '#f472b6' : '#fff'
+          });
+        }
+      } else if (normAction === 'PUNCH') {
+        fx.duration = 500;
+        for (let i = 0; i < 32; i++) {
+          const angle = Math.random() * Math.PI * 2;
+          const spd = 5 + Math.random() * 14;
+          fx.particles.push({
+            x: strikeX,
+            y: strikeY,
+            vx: Math.cos(angle) * spd,
+            vy: Math.sin(angle) * spd,
+            life: 1.0,
+            decay: 0.025 + Math.random() * 0.03,
+            size: 3 + Math.random() * 5,
+            color: Math.random() > 0.3 ? '#ef4444' : '#f59e0b'
+          });
+        }
+      } else if (normAction === 'JUMP') {
+        fx.duration = 600;
+        for (let i = 0; i < 24; i++) {
+          fx.particles.push({
+            x: strikeX + (Math.random() - 0.5) * 140,
+            y: strikeY + 10 + Math.random() * 40,
+            vx: (Math.random() - 0.5) * 3,
+            vy: -(6 + Math.random() * 11),
+            life: 1.0,
+            decay: 0.02 + Math.random() * 0.02,
+            size: 3 + Math.random() * 4,
+            color: Math.random() > 0.3 ? '#06b6d4' : '#e0f2fe'
+          });
+        }
+      } else if (normAction === 'SLIDE_DOWN') {
+        fx.duration = 550;
+        for (let i = 0; i < 26; i++) {
+          fx.particles.push({
+            x: strikeX - 60 + Math.random() * 200,
+            y: strikeY + 30 + (Math.random() - 0.5) * 20,
+            vx: 8 + Math.random() * 12,
+            vy: -(1 + Math.random() * 3),
+            life: 1.0,
+            decay: 0.025 + Math.random() * 0.03,
+            size: 3 + Math.random() * 5,
+            color: Math.random() > 0.4 ? '#10b981' : '#6ee7b7'
+          });
+        }
+      } else if (normAction === 'LEFT') {
+        fx.duration = 500;
+        for (let i = 0; i < 20; i++) {
+          fx.particles.push({
+            x: strikeX + Math.random() * 120,
+            y: strikeY + (Math.random() - 0.5) * 60,
+            vx: -(8 + Math.random() * 12),
+            vy: (Math.random() - 0.5) * 2,
+            life: 1.0,
+            decay: 0.03 + Math.random() * 0.03,
+            size: 3 + Math.random() * 4,
+            color: '#eab308'
+          });
+        }
+      } else if (normAction === 'RIGHT') {
+        fx.duration = 500;
+        for (let i = 0; i < 20; i++) {
+          fx.particles.push({
+            x: strikeX - Math.random() * 120,
+            y: strikeY + (Math.random() - 0.5) * 60,
+            vx: 8 + Math.random() * 12,
+            vy: (Math.random() - 0.5) * 2,
+            life: 1.0,
+            decay: 0.03 + Math.random() * 0.03,
+            size: 3 + Math.random() * 4,
+            color: '#f97316'
+          });
+        }
+      } else if (normAction === 'GO') {
+        fx.duration = 650;
+        for (let i = 0; i < 35; i++) {
+          const angle = Math.random() * Math.PI * 2;
+          const spd = 6 + Math.random() * 14;
+          fx.particles.push({
+            x: strikeX,
+            y: strikeY,
+            vx: Math.cos(angle) * spd,
+            vy: Math.sin(angle) * spd,
+            life: 1.0,
+            decay: 0.02 + Math.random() * 0.02,
+            size: 3 + Math.random() * 5,
+            color: Math.random() > 0.5 ? '#22c55e' : '#86efac'
+          });
+        }
+      } else if (normAction === 'WIN') {
+        fx.duration = 1400;
+        const confettiColors = ['#f59e0b', '#ec4899', '#06b6d4', '#10b981', '#a855f7', '#fbbf24', '#ffffff'];
+        for (let i = 0; i < 60; i++) {
+          fx.particles.push({
+            x: Math.random() * (this.canvas ? this.canvas.width : 1920),
+            y: -20 - Math.random() * 100,
+            vx: (Math.random() - 0.5) * 4,
+            vy: 3 + Math.random() * 6,
+            rot: Math.random() * Math.PI * 2,
+            vRot: (Math.random() - 0.5) * 0.2,
+            life: 1.0,
+            decay: 0.007 + Math.random() * 0.008,
+            size: 5 + Math.random() * 7,
+            color: confettiColors[Math.floor(Math.random() * confettiColors.length)]
+          });
+        }
+      }
+
+      this.activeFX.push(fx);
+    }
+
+    renderActionFX(ctx, w, h) {
+      const now = performance.now();
+      for (let idx = this.activeFX.length - 1; idx >= 0; idx--) {
+        const fx = this.activeFX[idx];
+        const p = (now - fx.startTime) / fx.duration;
+        if (p >= 1) {
+          this.activeFX.splice(idx, 1);
+          continue;
+        }
+
+        const alpha = Math.max(0, 1 - p);
+
+        // 1. Action-specific geometric vector visual effects on the video
+        if (fx.action === 'SLASH') {
+          ctx.save();
+          ctx.translate(fx.x, fx.y);
+          const slashProgress = Math.min(1, p * 1.8);
+          ctx.strokeStyle = `rgba(244, 114, 182, ${alpha})`;
+          ctx.lineWidth = 14 * alpha;
+          ctx.lineCap = 'round';
+          ctx.shadowColor = '#ec4899';
+          ctx.shadowBlur = 24 * alpha;
+          ctx.beginPath();
+          ctx.moveTo(-160 * slashProgress, -120 * slashProgress);
+          ctx.lineTo(160 * slashProgress, 120 * slashProgress);
+          ctx.stroke();
+
+          ctx.strokeStyle = `rgba(255, 255, 255, ${alpha * 0.9})`;
+          ctx.lineWidth = 4 * alpha;
+          ctx.beginPath();
+          ctx.moveTo(-150 * slashProgress, -110 * slashProgress);
+          ctx.lineTo(150 * slashProgress, 110 * slashProgress);
+          ctx.stroke();
+          ctx.restore();
+        } else if (fx.action === 'PUNCH') {
+          ctx.save();
+          ctx.translate(fx.x, fx.y);
+          const ringRadius = 35 + p * 130;
+          ctx.strokeStyle = `rgba(239, 68, 68, ${alpha})`;
+          ctx.lineWidth = 8 * alpha;
+          ctx.shadowColor = '#ef4444';
+          ctx.shadowBlur = 20 * alpha;
+          ctx.beginPath();
+          ctx.arc(0, 0, ringRadius, 0, Math.PI * 2);
+          ctx.stroke();
+
+          for (let i = 0; i < 8; i++) {
+            const ang = (i * Math.PI / 4) + (p * 0.2);
+            const r1 = ringRadius * 0.7;
+            const r2 = ringRadius * 1.35;
+            ctx.strokeStyle = `rgba(245, 158, 11, ${alpha * 0.9})`;
+            ctx.lineWidth = 4 * alpha;
+            ctx.beginPath();
+            ctx.moveTo(Math.cos(ang) * r1, Math.sin(ang) * r1);
+            ctx.lineTo(Math.cos(ang) * r2, Math.sin(ang) * r2);
+            ctx.stroke();
+          }
+          ctx.restore();
+        } else if (fx.action === 'JUMP') {
+          ctx.save();
+          const jumpY = fx.y - (p * 140);
+          const ringW = 60 + p * 120;
+          const ringH = 18 + p * 35;
+          ctx.strokeStyle = `rgba(6, 182, 212, ${alpha})`;
+          ctx.lineWidth = 6 * alpha;
+          ctx.shadowColor = '#06b6d4';
+          ctx.shadowBlur = 20 * alpha;
+          ctx.beginPath();
+          ctx.ellipse(fx.x, jumpY, ringW, ringH, 0, 0, Math.PI * 2);
+          ctx.stroke();
+
+          ctx.strokeStyle = `rgba(224, 242, 254, ${alpha * 0.7})`;
+          ctx.lineWidth = 3 * alpha;
+          for (let i = -2; i <= 2; i++) {
+            const lx = fx.x + i * 28;
+            ctx.beginPath();
+            ctx.moveTo(lx, jumpY + 40);
+            ctx.lineTo(lx, jumpY - 50);
+            ctx.stroke();
+          }
+          ctx.restore();
+        } else if (fx.action === 'SLIDE_DOWN') {
+          ctx.save();
+          const slideW = 120 + p * 260;
+          ctx.strokeStyle = `rgba(16, 185, 129, ${alpha})`;
+          ctx.lineWidth = 7 * alpha;
+          ctx.shadowColor = '#10b981';
+          ctx.shadowBlur = 18 * alpha;
+          ctx.beginPath();
+          ctx.moveTo(fx.x - 80, fx.y + 35);
+          ctx.lineTo(fx.x - 80 + slideW, fx.y + 35);
+          ctx.stroke();
+
+          ctx.strokeStyle = `rgba(110, 231, 183, ${alpha * 0.6})`;
+          ctx.lineWidth = 3 * alpha;
+          ctx.beginPath();
+          ctx.moveTo(fx.x - 50, fx.y + 45);
+          ctx.lineTo(fx.x - 50 + slideW * 0.8, fx.y + 45);
+          ctx.stroke();
+          ctx.restore();
+        } else if (fx.action === 'LEFT' || fx.action === 'RIGHT') {
+          ctx.save();
+          ctx.translate(fx.x, fx.y);
+          const dir = fx.action === 'LEFT' ? -1 : 1;
+          const col = fx.action === 'LEFT' ? '#eab308' : '#f97316';
+          ctx.strokeStyle = col;
+          ctx.lineWidth = 6 * alpha;
+          ctx.shadowColor = col;
+          ctx.shadowBlur = 18 * alpha;
+          for (let i = 0; i < 3; i++) {
+            const cx = dir * (i * 35 + p * 130);
+            ctx.beginPath();
+            ctx.moveTo(cx - dir * 18, -25);
+            ctx.lineTo(cx, 0);
+            ctx.lineTo(cx - dir * 18, 25);
+            ctx.stroke();
+          }
+          ctx.restore();
+        } else if (fx.action === 'GO' || fx.action === 'STARTING_COUNT') {
+          ctx.save();
+          const pulseR = 30 + p * 220;
+          ctx.strokeStyle = fx.action === 'GO' ? `rgba(34, 197, 94, ${alpha})` : `rgba(245, 158, 11, ${alpha})`;
+          ctx.lineWidth = 8 * alpha;
+          ctx.shadowColor = fx.color;
+          ctx.shadowBlur = 24 * alpha;
+          ctx.beginPath();
+          ctx.arc(fx.x, fx.y, pulseR, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.restore();
+        }
+
+        // 2. Render particle sparks & motes
+        for (const pt of fx.particles) {
+          pt.x += pt.vx;
+          pt.y += pt.vy;
+          pt.life -= pt.decay;
+          if (pt.life > 0) {
+            ctx.save();
+            ctx.globalAlpha = Math.max(0, pt.life * alpha);
+            ctx.fillStyle = pt.color;
+            if (pt.rot !== undefined) {
+              pt.rot += pt.vRot;
+              ctx.translate(pt.x, pt.y);
+              ctx.rotate(pt.rot);
+              ctx.fillRect(-pt.size / 2, -pt.size / 2, pt.size, pt.size * 1.5);
+            } else {
+              ctx.beginPath();
+              ctx.arc(pt.x, pt.y, Math.max(1, pt.size * pt.life), 0, Math.PI * 2);
+              ctx.fill();
+            }
+            ctx.restore();
+          }
+        }
+      }
+    }
+
+    drawTargetReticle(ctx, strikeX, strikeY) {
+      const now = performance.now();
+      const isPulsing = now < this.strikePulse;
+      const pulseRatio = isPulsing ? (this.strikePulse - now) / 350 : 0;
+      const baseColor = isPulsing ? this.targetPulseColor : 'rgba(56, 189, 248, 0.9)';
+
+      ctx.save();
+
+      // Rhythmic runway beam extending across the video
+      const runwayGrad = ctx.createLinearGradient(strikeX - 60, strikeY, ctx.canvas.width, strikeY);
+      runwayGrad.addColorStop(0, 'rgba(56, 189, 248, 0.4)');
+      runwayGrad.addColorStop(0.35, 'rgba(255, 255, 255, 0.2)');
+      runwayGrad.addColorStop(1, 'rgba(255, 255, 255, 0.02)');
+      ctx.strokeStyle = runwayGrad;
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(strikeX - 60, strikeY);
+      ctx.lineTo(ctx.canvas.width, strikeY);
+      ctx.stroke();
+
+      // Outer rotating HUD reticle tick marks
+      const rot = now * 0.002;
+      ctx.save();
+      ctx.translate(strikeX, strikeY);
+      ctx.rotate(rot);
+      ctx.strokeStyle = isPulsing ? this.targetPulseColor : 'rgba(56, 189, 248, 0.55)';
+      ctx.lineWidth = 2.5;
+      const outerR = 38 + pulseRatio * 15;
+      for (let i = 0; i < 4; i++) {
+        const a = (i * Math.PI) / 2;
+        ctx.beginPath();
+        ctx.arc(0, 0, outerR, a - 0.28, a + 0.28);
+        ctx.stroke();
+      }
+      ctx.restore();
+
+      // Core Target Ring
+      ctx.strokeStyle = baseColor;
+      ctx.lineWidth = 3.5 + pulseRatio * 3;
+      ctx.shadowColor = baseColor;
+      ctx.shadowBlur = 12 + pulseRatio * 18;
+      ctx.beginPath();
+      ctx.arc(strikeX, strikeY, 28 + pulseRatio * 8, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // Center aim pip
+      ctx.fillStyle = baseColor;
+      ctx.beginPath();
+      ctx.arc(strikeX, strikeY, 4 + pulseRatio * 3, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Label below
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.75)';
+      ctx.font = 'bold 11px -apple-system, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText("ZONE D'ACTION", strikeX, strikeY + 48);
+
+      ctx.restore();
     }
 
     finish(victory = true) {
@@ -1326,24 +1727,12 @@
       this.ctx.clearRect(0, 0, w, h);
 
       const curTime = tvPlayer.getCurrentTime();
-      const strikeX = w * 0.35;
+      const strikeX = w * 0.32;
       const strikeY = h * 0.72;
       const approachSpeed = 360; // Pixels per second
 
-      // 1. Draw Strike Line & Runway
-      this.ctx.strokeStyle = "rgba(255, 255, 255, 0.2)";
-      this.ctx.lineWidth = 3;
-      this.ctx.beginPath();
-      this.ctx.moveTo(strikeX - 80, strikeY + 40);
-      this.ctx.lineTo(w, strikeY + 40);
-      this.ctx.stroke();
-
-      // Strike Target Ring
-      this.ctx.strokeStyle = "rgba(56, 189, 248, 0.9)";
-      this.ctx.lineWidth = 4;
-      this.ctx.beginPath();
-      this.ctx.arc(strikeX, strikeY, 32, 0, Math.PI * 2);
-      this.ctx.stroke();
+      // 1. Draw Target Reticle Zone (NO moving avatar on screen!)
+      this.drawTargetReticle(this.ctx, strikeX, strikeY);
 
       // 2. Upcoming Action Cues (Only rendered if showOnScreen !== false)
       for (const evt of this.timeline) {
@@ -1356,7 +1745,7 @@
             const color = this.getActionColor(evt.action);
 
             // Shrinking timing ring
-            const ringRadius = Math.max(32, 32 + (diff * 35));
+            const ringRadius = Math.max(28, 28 + (diff * 35));
             this.ctx.strokeStyle = color;
             this.ctx.lineWidth = 3;
             this.ctx.beginPath();
@@ -1370,19 +1759,19 @@
             this.ctx.fill();
 
             // Action Glyphs & Labels
-            this.ctx.fillStyle = "#fff";
-            this.ctx.font = "bold 13px -apple-system, sans-serif";
-            this.ctx.textAlign = "center";
+            this.ctx.fillStyle = '#fff';
+            this.ctx.font = 'bold 12px -apple-system, sans-serif';
+            this.ctx.textAlign = 'center';
             this.ctx.fillText(this.getActionShortLabel(evt.action), cueX, strikeY + 5);
 
             // Hint caption below
-            this.ctx.font = "bold 14px -apple-system, sans-serif";
-            this.ctx.fillStyle = "#f8fafc";
-            this.ctx.shadowColor = "rgba(0,0,0,0.8)";
+            this.ctx.font = 'bold 14px -apple-system, sans-serif';
+            this.ctx.fillStyle = '#f8fafc';
+            this.ctx.shadowColor = 'rgba(0,0,0,0.85)';
             this.ctx.shadowBlur = 6;
             this.ctx.fillText(evt.hint || evt.action, cueX, strikeY + 52);
             this.ctx.shadowBlur = 0;
-            this.ctx.textAlign = "start";
+            this.ctx.textAlign = 'start';
           }
         }
 
@@ -1393,22 +1782,33 @@
         }
       }
 
-      // 3. Draw Player Animated Character Reacting to Action
-      this.drawPlayerCharacter(this.ctx, strikeX, strikeY);
+      // 3. Render dynamic fullscreen action visual effects on the video
+      this.renderActionFX(this.ctx, w, h);
 
-      // 4. Pop Feedback ("PERFECT!", "BIEN!", "MANQUÉ!")
+      // 4. Floating Hit Accuracy Feedback ("PERFECT +100", "BIEN +50", "MANQUÉ")
       if (this.state.lastFeedback && performance.now() < this.state.feedbackTimer) {
+        const fbElapsed = (performance.now() - this.state.lastFeedback.time) / 750;
+        const fbAlpha = Math.max(0, 1 - fbElapsed);
+        const fbY = strikeY - 70 - (fbElapsed * 35);
+
         this.ctx.save();
-        this.ctx.font = "bold 46px -apple-system, sans-serif";
+        this.ctx.globalAlpha = fbAlpha;
+        this.ctx.font = 'bold 44px -apple-system, sans-serif';
         this.ctx.fillStyle = this.state.lastFeedback.color;
-        this.ctx.textAlign = "center";
-        this.ctx.shadowColor = "rgba(0, 0, 0, 0.9)";
-        this.ctx.shadowBlur = 10;
-        this.ctx.fillText(this.state.lastFeedback.text, strikeX, strikeY - 90);
+        this.ctx.textAlign = 'center';
+        this.ctx.shadowColor = 'rgba(0, 0, 0, 0.95)';
+        this.ctx.shadowBlur = 12;
+        this.ctx.fillText(this.state.lastFeedback.text, strikeX, fbY);
+
+        if (this.state.lastFeedback.pointsText) {
+          this.ctx.font = 'bold 22px -apple-system, sans-serif';
+          this.ctx.fillStyle = '#fff';
+          this.ctx.fillText(this.state.lastFeedback.pointsText, strikeX, fbY + 28);
+        }
         this.ctx.restore();
       }
 
-      // 5. Update DOM Top HUD Counters
+      // 5. Update DOM Top HUD Counters and Progress Bar
       this.updateHUD();
     }
 
@@ -1434,86 +1834,13 @@
       return a;
     }
 
-    drawPlayerCharacter(ctx, x, y) {
-      ctx.save();
-      ctx.translate(x, y);
-
-      const elapsed = (performance.now() - this.state.charAnimTimer) / 1000;
-      const isAction = elapsed < 0.45;
-      const state = isAction ? this.state.characterState : 'RUNNING';
-
-      const legSwing = Math.sin(performance.now() * 0.015) * 18;
-
-      switch (state) {
-        case 'JUMP':
-          ctx.translate(0, -60);
-          ctx.fillStyle = "#06b6d4";
-          break;
-        case 'SLIDE_DOWN':
-          ctx.translate(0, 30);
-          ctx.fillStyle = "#10b981";
-          break;
-        case 'LEFT':
-          ctx.translate(-50, 0);
-          ctx.fillStyle = "#eab308";
-          break;
-        case 'RIGHT':
-          ctx.translate(50, 0);
-          ctx.fillStyle = "#f97316";
-          break;
-        case 'SLASH':
-          ctx.fillStyle = "#ec4899";
-          // Sword arc
-          ctx.strokeStyle = "#f472b6";
-          ctx.lineWidth = 6;
-          ctx.beginPath();
-          ctx.arc(15, -25, 45, -0.6, 1.8);
-          ctx.stroke();
-          break;
-        case 'PUNCH':
-          ctx.fillStyle = "#ef4444";
-          // Fist thrust
-          ctx.fillRect(15, -24, 30, 14);
-          break;
-        default:
-          ctx.fillStyle = "#38bdf8";
-          break;
-      }
-
-      // Head
-      ctx.beginPath();
-      ctx.arc(0, -50, 16, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Torso
-      ctx.fillRect(-12, -34, 24, 36);
-
-      // Limbs
-      ctx.strokeStyle = "#fff";
-      ctx.lineWidth = 5;
-      ctx.lineCap = "round";
-
-      if (state === 'SLIDE_DOWN') {
-        ctx.beginPath();
-        ctx.moveTo(-10, 0); ctx.lineTo(30, 12);
-        ctx.stroke();
-      } else {
-        // Legs
-        ctx.beginPath();
-        ctx.moveTo(-6, 2); ctx.lineTo(-6 - legSwing, 28);
-        ctx.moveTo(6, 2); ctx.lineTo(6 + legSwing, 28);
-        ctx.stroke();
-      }
-
-      ctx.restore();
-    }
-
     updateHUD() {
       const scoreEl = document.getElementById('hud-score-display');
       const heartsEl = document.getElementById('hud-lives-hearts');
       const comboBadge = document.getElementById('hud-combo-container');
       const multVal = document.getElementById('hud-multiplier-val');
       const comboCount = document.getElementById('hud-combo-count');
+      const progressFill = document.getElementById('game-progress-fill');
 
       if (scoreEl) scoreEl.textContent = this.state.score;
       if (heartsEl) {
@@ -1530,6 +1857,15 @@
         } else {
           comboBadge.style.display = 'none';
         }
+      }
+
+      // Update Game Video Progress Bar Overlay
+      if (progressFill && this.item) {
+        const curTime = tvPlayer.getCurrentTime();
+        const start = this.item.trimStart || 0;
+        const end = this.item.trimEnd || this.item.durationSeconds;
+        const pct = Math.max(0, Math.min(100, ((curTime - start) / (end - start)) * 100));
+        progressFill.style.width = pct + '%';
       }
     }
   }
@@ -1569,7 +1905,7 @@
       this.stepIntervals = [];
       this.lastStepTime = 0;
       this.speedKmh = 0;
-      this.appliedRate = 1.0;
+      this.appliedRate = CONFIG.run.minPlaybackRate || 0.25;
       this.totalSteps = 0;
       this.leftSteps = 0;
       this.rightSteps = 0;
@@ -1578,7 +1914,9 @@
       this.maxSpeedKmh = 0;
       this.speedSum = 0;
       this.speedSamples = 0;
-      this.isPausedByStop = false;
+
+      // Set initial video playback rate to minimum slow pace
+      tvPlayer.setPlaybackRate(this.appliedRate);
 
       // Start tick loop at 100ms
       this.updateInterval = setInterval(() => this.tick(), 100);
@@ -1621,12 +1959,6 @@
 
       // Add distance
       this.distanceKm += (profile.profile.strideLengthM / 1000);
-
-      // If video was paused because runner had stopped, resume now!
-      if (this.isPausedByStop) {
-        this.isPausedByStop = false;
-        tvPlayer.resumePlayback();
-      }
     }
 
     flashFoot(foot) {
@@ -1656,16 +1988,12 @@
         }
       }
 
-      // 2. Check for runner stop (inactivity > 2.5s)
+      // 2. Check for runner pause/stop (inactivity > 2.5s)
+      // When stopped: DO NOT PAUSE THE VIDEO! Keep rolling at minimum slow speed.
       if (this.lastStepTime > 0 && (now - this.lastStepTime) > CONFIG.input.stepTimeoutMs) {
         rawSpeedKmh = 0;
         cadencePpm = 0;
         this.stepIntervals = [];
-
-        if (!this.isPausedByStop) {
-          this.isPausedByStop = true;
-          tvPlayer.pausePlayback();
-        }
       }
 
       // 3. Smooth speed with Exponential Moving Average
@@ -1680,12 +2008,16 @@
       }
 
       // 4. Synchronize YouTube Playback Rate
-      const refSpeed = this.item?.raw?.virtualRun?.speedMapping?.referenceSpeedKmh || CONFIG.run.referenceSpeedKmh;
-      let targetRate = this.speedKmh > 0 ? (this.speedKmh / refSpeed) : 0.25;
-      targetRate = Math.max(CONFIG.run.minPlaybackRate, Math.min(CONFIG.run.maxPlaybackRate, targetRate));
+      // When stopped, video continues playing at slow minimum speed (e.g. 0.25x) without pausing!
+      const refSpeed = this.item?.raw?.virtualRun?.speedMapping?.referenceSpeedKmh || CONFIG.run.referenceSpeedKmh || 8.0;
+      const minRate = this.item?.raw?.virtualRun?.speedMapping?.videoPlaybackRateMin || CONFIG.run.minPlaybackRate || 0.25;
+      const maxRate = this.item?.raw?.virtualRun?.speedMapping?.videoPlaybackRateMax || CONFIG.run.maxPlaybackRate || 2.0;
+
+      let targetRate = this.speedKmh > 0 ? (this.speedKmh / refSpeed) : minRate;
+      targetRate = Math.max(minRate, Math.min(maxRate, targetRate));
 
       // Apply with hysteresis to avoid rate flicker
-      if (Math.abs(targetRate - this.appliedRate) > 0.1) {
+      if (Math.abs(targetRate - this.appliedRate) > 0.08) {
         this.appliedRate = tvPlayer.setPlaybackRate(targetRate);
       }
 
@@ -1701,11 +2033,22 @@
       const timeEl = document.getElementById('run-val-time');
       const calEl = document.getElementById('run-val-calories');
       const progressFill = document.getElementById('hud-progress-fill');
+      const statusBadge = document.getElementById('run-status-badge');
 
       if (stepsEl) stepsEl.textContent = this.totalSteps;
       if (speedEl) speedEl.textContent = this.speedKmh.toFixed(1);
       if (cadenceEl) cadenceEl.textContent = cadence;
       if (distEl) distEl.textContent = this.distanceKm.toFixed(2);
+
+      if (statusBadge) {
+        if (this.speedKmh > 1.0) {
+          statusBadge.textContent = `CADENCE ACTIVE : ${cadence} PPM • ALLURE ${this.appliedRate}x`;
+          statusBadge.style.color = "var(--accent-run)";
+        } else {
+          statusBadge.textContent = `ALLURE MINIMALE CONTINUE (${this.appliedRate}x) • EN ATTENTE DE PAS`;
+          statusBadge.style.color = "var(--accent-gold)";
+        }
+      }
 
       if (timeEl) {
         const m = Math.floor(this.movingTimeSec / 60);

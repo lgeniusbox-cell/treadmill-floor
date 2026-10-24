@@ -1,0 +1,8 @@
+{
+  "name": "VideoPlay Studio",
+  "description": "Interactive video studio that turns YouTube videos into playable action games and treadmill virtual runs with non-destructive editing and AI assistance.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

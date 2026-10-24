@@ -1,0 +1,52 @@
+{
+  "schemaVersion": "1.0",
+  "type": "virtual_run",
+  "meta": {
+    "title": "Sentier des Crêtes Alpines 4K",
+    "difficulty": "normal",
+    "author": "FitTV Arena Studio",
+    "createdAt": "2026-10-23T12:00:00Z"
+  },
+  "video": {
+    "source": "youtube",
+    "videoId": "XTgSxQ6ZLM0",
+    "url": "https://www.youtube.com/watch?v=XTgSxQ6ZLM0",
+    "title": "Sentier des Crêtes Alpines 4K",
+    "durationSeconds": 120.0,
+    "effectiveDurationSeconds": 105.0,
+    "trimStart": 5.0,
+    "trimEnd": 110.0,
+    "cuts": [],
+    "keptSegments": [
+      { "start": 5.0, "end": 110.0, "duration": 105.0 }
+    ],
+    "audioMuted": false
+  },
+  "virtualRun": {
+    "route": {
+      "name": "Sentier des Crêtes Alpines",
+      "location": "Chamonix Mont-Blanc",
+      "totalDistanceKm": 2.8,
+      "elevationGainM": 145,
+      "terrain": "trail"
+    },
+    "defaultPaceMinPerKm": 5.5,
+    "speedMapping": {
+      "referenceSpeedKmh": 8.0,
+      "minSpeedKmh": 3.0,
+      "maxSpeedKmh": 18.0,
+      "videoPlaybackRateMin": 0.25,
+      "videoPlaybackRateMax": 2.0
+    },
+    "segments": [
+      { "start": 5, "end": 35, "distanceKm": 0.6, "slopePercent": 1, "recommendedSpeedKmh": 7.5, "label": "Échauffement vallonné" },
+      { "start": 35, "end": 75, "distanceKm": 1.2, "slopePercent": 6, "recommendedSpeedKmh": 9.0, "label": "Montée vers le Belvédère" },
+      { "start": 75, "end": 110, "distanceKm": 1.0, "slopePercent": -2, "recommendedSpeedKmh": 10.5, "label": "Descente rapide vers le lac" }
+    ],
+    "checkpoints": [
+      { "time": 35, "label": "Km 1", "distanceKm": 1.0, "message": "Super cadence, continuez !" },
+      { "time": 75, "label": "Belvédère 2.2 km", "distanceKm": 2.2, "message": "Vue panoramique époustouflante !" },
+      { "time": 105, "label": "Arrivée Lac", "distanceKm": 2.8, "message": "Dernier sprint !" }
+    ]
+  }
+}

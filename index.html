@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>FitTV Arena - Android TV Fitness & Gaming</title>
+  <meta name="description" content="Application Web 10-Foot pour Android TV: Jeux d'action interactifs et courses virtuelles contrôlés par télécommande, manette et tapis de sol fitness." />
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body data-theme="adult">
+
+  <div class="app-container">
+
+    <!-- TOP HEADER -->
+    <header class="top-header">
+      <div class="brand-area">
+        <div class="brand-logo">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="5 3 19 12 5 21 5 3"></polygon>
+          </svg>
+        </div>
+        <div class="brand-title">FitTV <span>Arena</span></div>
+      </div>
+
+      <div class="header-status-area">
+        <!-- Gamepad / Mat Tracker Status -->
+        <div id="gamepad-status-badge" class="gamepad-badge" title="État de la manette ou tapis de sol L1/R1">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="2" y="6" width="20" height="12" rx="2"></rect>
+            <path d="M6 12h4m-2-2v4m9-2h.01m3 0h.01"></path>
+          </svg>
+          <span id="gamepad-status-text">Manette déconnectée</span>
+          <div class="gamepad-indicator-dot"></div>
+        </div>
+
+        <!-- Sound Toggle -->
+        <button id="btn-toggle-sound" class="tv-pill-btn" data-focusable title="Activer / Couper le son">
+          <svg id="icon-sound-state" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+            <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+          </svg>
+          <span id="label-sound-state">Son: ON</span>
+        </button>
+
+        <!-- Profile Badge -->
+        <button id="btn-header-profile" class="profile-badge" data-focusable title="Profil & Thème">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+            <circle cx="12" cy="7" r="4"></circle>
+          </svg>
+          <span id="header-profile-name">Joueur 1</span>
+          <span id="header-theme-badge" style="font-size:0.75rem; color:var(--focus-ring); text-transform:uppercase;">[ADULTE]</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- MAIN SCREENS CONTAINER -->
+    <div class="screen-wrapper">
+
+      <!-- ====================================================================
+           SCREEN 1: HOME SCREEN (THREE BIG ENTRIES)
+           ==================================================================== -->
+      <section id="screen-home" class="tv-screen active">
+        <div class="home-entries-grid">
+
+          <!-- ENTRY 1: GAMES -->
+          <div id="card-entry-games" class="home-card card-game" data-focusable>
+            <div class="home-card-header">
+              <div class="home-card-icon">
+                <svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                  <rect x="2" y="6" width="20" height="12" rx="2"></rect>
+                  <path d="M6 12h4m-2-2v4m9-2h.01m3 0h.01"></path>
+                </svg>
+              </div>
+              <span class="home-card-badge">Interactif</span>
+            </div>
+            <div class="home-card-body">
+              <h2>JEUX D'ACTION</h2>
+              <p>Évitez les obstacles, sautez, glissez, esquivez et frappez au rythme de vos vidéos YouTube favorites.</p>
+            </div>
+            <div class="home-card-footer">
+              <span class="home-card-cta">Explorer les jeux <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="9 18 15 12 9 6"></polyline></svg></span>
+              <span style="font-size:0.9rem; color:var(--text-dim);">D-pad / Manette</span>
+            </div>
+          </div>
+
+          <!-- ENTRY 2: VIRTUAL RUN -->
+          <div id="card-entry-runs" class="home-card card-run" data-focusable>
+            <div class="home-card-header">
+              <div class="home-card-icon">
+                <svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                  <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path>
+                  <line x1="4" y1="22" x2="4" y2="15"></line>
+                </svg>
+              </div>
+              <span class="home-card-badge">Treadmill & Tapis</span>
+            </div>
+            <div class="home-card-body">
+              <h2>VIRTUAL RUN</h2>
+              <p>Parcourez des routes spectaculaires. La vidéo accélère ou ralentit en suivant précisément votre cadence de pas réelle.</p>
+            </div>
+            <div class="home-card-footer">
+              <span class="home-card-cta">Choisir un parcours <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="9 18 15 12 9 6"></polyline></svg></span>
+              <span style="font-size:0.9rem; color:var(--text-dim);">Tapis L1/R1</span>
+            </div>
+          </div>
+
+          <!-- ENTRY 3: CARDIO SESSIONS (LOCKED / COMING SOON) -->
+          <div id="card-entry-cardio" class="home-card card-cardio" data-focusable>
+            <div class="home-card-header">
+              <div class="home-card-icon">
+                <svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                  <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                </svg>
+              </div>
+              <span class="home-card-badge">Bientôt disponible</span>
+            </div>
+            <div class="home-card-body">
+              <h2>SÉANCES CARDIO</h2>
+              <p>Programmes d'entraînement fractionné HIIT et coaching vocal synchronisé avec vos performances sportives.</p>
+            </div>
+            <div class="home-card-footer">
+              <span class="home-card-cta" style="color:var(--text-dim);">Verrouillé 🔒</span>
+              <span style="font-size:0.9rem; color:var(--text-dim);">Prochainement</span>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Bottom Quick Actions & Navigation Bar -->
+        <div class="home-toolbar">
+          <div class="home-quick-actions">
+            <button id="btn-nav-profile" class="tv-btn" data-focusable>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+              <span>Profil & Thèmes</span>
+            </button>
+            <button id="btn-nav-settings" class="tv-btn" data-focusable>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+              <span>Paramètres</span>
+            </button>
+            <button id="btn-nav-controls" class="tv-btn" data-focusable>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+              <span>Aide Contrôles [MENU]</span>
+            </button>
+          </div>
+
+          <div class="remote-hint">
+            <span>Naviguer : <span class="remote-key-tag">D-PAD</span></span>
+            <span>Sélectionner : <span class="remote-key-tag">OK / A</span></span>
+            <span>Retour : <span class="remote-key-tag">RETOUR / B</span></span>
+          </div>
+        </div>
+      </section>
+
+      <!-- ====================================================================
+           SCREEN 2: GAMES CATALOG
+           ==================================================================== -->
+      <section id="screen-games-list" class="tv-screen">
+        <div class="list-screen-header">
+          <div class="flex items-center gap-4">
+            <button class="tv-btn btn-back-to-home" data-focusable>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"></polyline></svg>
+              <span>Retour Accueil</span>
+            </button>
+            <h1>Jeux d'Action Disponibles</h1>
+          </div>
+          <div class="flex items-center gap-3">
+            <button id="btn-open-custom-game" class="tv-btn tv-btn-primary" data-focusable>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+              <span>+ Importer Script / Vidéo</span>
+            </button>
+            <span style="font-size:1.05rem; color:var(--text-muted);">Dossier: <span class="remote-key-tag">./games/index.json</span></span>
+          </div>
+        </div>
+
+        <div id="games-items-container" class="items-grid">
+          <!-- Populated dynamically via ContentLoader -->
+        </div>
+      </section>
+
+      <!-- ====================================================================
+           SCREEN 3: VIRTUAL RUN CATALOG
+           ==================================================================== -->
+      <section id="screen-runs-list" class="tv-screen">
+        <div class="list-screen-header">
+          <div class="flex items-center gap-4">
+            <button class="tv-btn btn-back-to-home" data-focusable>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"></polyline></svg>
+              <span>Retour Accueil</span>
+            </button>
+            <h1>Parcours Virtual Run</h1>
+          </div>
+          <div class="flex items-center gap-3">
+            <button id="btn-open-custom-run" class="tv-btn tv-btn-primary" data-focusable>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+              <span>+ Importer Script / Vidéo</span>
+            </button>
+            <span style="font-size:1.05rem; color:var(--text-muted);">Dossier: <span class="remote-key-tag">./virtual-run/index.json</span></span>
+          </div>
+        </div>
+
+        <div id="runs-items-container" class="items-grid">
+          <!-- Populated dynamically via ContentLoader -->
+        </div>
+      </section>
+
+      <!-- ====================================================================
+           SCREEN 4: PROFILE & AUDIENCE THEMES
+           ==================================================================== -->
+      <section id="screen-profile" class="tv-screen">
+        <div class="list-screen-header">
+          <div class="flex items-center gap-4">
+            <button class="tv-btn btn-back-to-home" data-focusable>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"></polyline></svg>
+              <span>Retour</span>
+            </button>
+            <h1>Profil & Thème d'Audience</h1>
+          </div>
+        </div>
+
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:2.5rem; flex:1;">
+          <!-- Left: Profile details -->
+          <div class="home-card" style="padding:2rem;">
+            <h3 style="font-size:1.6rem; font-weight:800; margin-bottom:1.5rem;">Joueur Actif</h3>
+            
+            <div style="margin-bottom:1.5rem;">
+              <label style="font-size:0.9rem; color:var(--text-muted); font-weight:700;">Nom du joueur</label>
+              <div class="flex gap-2" style="margin-top:0.5rem;">
+                <input type="text" id="profile-name-display" readonly value="Joueur 1" style="background:#090e1a; border:2px solid var(--border-color); color:#fff; font-size:1.3rem; font-weight:800; padding:0.6rem 1rem; border-radius:8px; flex:1;" />
+                <button id="btn-open-tv-keyboard" class="tv-btn tv-btn-primary" data-focusable>Modifier (Clavier TV)</button>
+              </div>
+            </div>
+
+            <div style="margin-bottom:1.5rem;">
+              <label style="font-size:0.9rem; color:var(--text-muted); font-weight:700;">Longueur de foulée (mètres) : <span id="label-stride-val" style="color:var(--focus-ring); font-weight:900;">0.75m</span></label>
+              <div class="flex gap-2" style="margin-top:0.5rem;">
+                <button id="btn-stride-minus" class="tv-btn" data-focusable style="width:60px;">-</button>
+                <button id="btn-stride-plus" class="tv-btn" data-focusable style="width:60px;">+</button>
+                <span style="font-size:0.85rem; color:var(--text-dim); align-self:center;">Défaut: 0.75m (détermine le calcul de distance)</span>
+              </div>
+            </div>
+
+            <div>
+              <label style="font-size:0.9rem; color:var(--text-muted); font-weight:700;">Poids estimé (kg) : <span id="label-weight-val" style="color:var(--focus-ring); font-weight:900;">70 kg</span></label>
+              <div class="flex gap-2" style="margin-top:0.5rem;">
+                <button id="btn-weight-minus" class="tv-btn" data-focusable style="width:60px;">-</button>
+                <button id="btn-weight-plus" class="tv-btn" data-focusable style="width:60px;">+</button>
+                <span style="font-size:0.85rem; color:var(--text-dim); align-self:center;">Utilisé pour l'estimation des calories MET</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right: Themes selector -->
+          <div class="home-card" style="padding:2rem;">
+            <h3 style="font-size:1.6rem; font-weight:800; margin-bottom:1rem;">Thème d'Audience</h3>
+            <p style="font-size:0.95rem; color:var(--text-muted); margin-bottom:1.5rem;">Adapte l'interface, la taille des composants et la densité des données à votre public.</p>
+
+            <div style="display:flex; flex-direction:column; gap:1rem;">
+              <button id="btn-theme-kids" class="tv-btn theme-option-btn" data-focusable style="justify-content:flex-start; text-align:left; padding:1.2rem;">
+                <span style="font-size:1.6rem;">🎈</span>
+                <div>
+                  <div style="font-size:1.2rem; font-weight:900;">ENFANTS (KIDS)</div>
+                  <div style="font-size:0.85rem; color:var(--text-muted);">Couleurs vives, formes arrondies, mascottes et icônes géantes.</div>
+                </div>
+              </button>
+
+              <button id="btn-theme-adult" class="tv-btn theme-option-btn" data-focusable style="justify-content:flex-start; text-align:left; padding:1.2rem;">
+                <span style="font-size:1.6rem;">💎</span>
+                <div>
+                  <div style="font-size:1.2rem; font-weight:900;">ADULTE (MODERNE DARK)</div>
+                  <div style="font-size:0.85rem; color:var(--text-muted);">Épuré, sombre moderne, contrastes étudiés pour téléviseur de salon.</div>
+                </div>
+              </button>
+
+              <button id="btn-theme-pro" class="tv-btn theme-option-btn" data-focusable style="justify-content:flex-start; text-align:left; padding:1.2rem;">
+                <span style="font-size:1.6rem;">⚡</span>
+                <div>
+                  <div style="font-size:1.2rem; font-weight:900;">ATHLÈTE PRO (DENSE)</div>
+                  <div style="font-size:0.85rem; color:var(--text-muted);">Forte densité d'informations, compteurs précis, thème carbone & vert fluo.</div>
+                </div>
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ====================================================================
+           SCREEN 5: SETTINGS
+           ==================================================================== -->
+      <section id="screen-settings" class="tv-screen">
+        <div class="list-screen-header">
+          <div class="flex items-center gap-4">
+            <button class="tv-btn btn-back-to-home" data-focusable>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"></polyline></svg>
+              <span>Retour</span>
+            </button>
+            <h1>Paramètres Système</h1>
+          </div>
+        </div>
+
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:2.5rem; flex:1;">
+          <div class="home-card" style="padding:2rem;">
+            <h3 style="font-size:1.5rem; font-weight:800; margin-bottom:1.5rem;">Calibration de Latence Vidéo</h3>
+            <p style="font-size:0.95rem; color:var(--text-muted); margin-bottom:1rem;">Ajuste l'offset entre l'horloge YouTube et la détection d'action en millisecondes.</p>
+            
+            <div class="flex items-center gap-4" style="margin-bottom:1.5rem;">
+              <button id="btn-calib-minus" class="tv-btn" data-focusable>- 50ms</button>
+              <span id="label-calib-ms" style="font-family:var(--font-mono); font-size:1.8rem; font-weight:900; color:var(--focus-ring); min-width:120px; text-align:center;">0 ms</span>
+              <button id="btn-calib-plus" class="tv-btn" data-focusable>+ 50ms</button>
+            </div>
+
+            <button id="btn-test-calib-sound" class="tv-btn" data-focusable style="align-self:flex-start;">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+              <span>Tester un bip de tempo</span>
+            </button>
+          </div>
+
+          <div class="home-card" style="padding:2rem;">
+            <h3 style="font-size:1.5rem; font-weight:800; margin-bottom:1.5rem;">Développement & Simulation</h3>
+            
+            <div style="margin-bottom:1.5rem;">
+              <div style="font-size:1.1rem; font-weight:800; margin-bottom:0.4rem;">Mode Simulation Pas (Alt+L / Alt+R)</div>
+              <p style="font-size:0.9rem; color:var(--text-muted); margin-bottom:0.75rem;">Permet de tester la course virtuelle au clavier sur PC sans tapis de sol physique.</p>
+              <button id="btn-toggle-sim-mode" class="tv-btn tv-btn-primary" data-focusable>
+                <span>Simulation : ACTIVÉE</span>
+              </button>
+            </div>
+
+            <div>
+              <div style="font-size:1.1rem; font-weight:800; margin-bottom:0.4rem;">Effacer les Meilleurs Scores</div>
+              <button id="btn-reset-scores" class="tv-btn" data-focusable style="border-color:#ef4444; color:#f87171;">
+                <span>Réinitialiser les scores du profil</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ====================================================================
+           SCREEN 6: ACTIVITY SUMMARY & REPORT
+           ==================================================================== -->
+      <section id="screen-summary" class="tv-screen">
+        <div class="summary-container">
+          <div class="summary-header">
+            <div id="summary-trophy" style="font-size:4rem; margin-bottom:0.5rem;">🏆</div>
+            <h1 id="summary-title">Activité Terminée !</h1>
+            <p id="summary-subtitle" style="font-size:1.3rem; color:var(--text-muted);">Félicitations pour vos efforts !</p>
+          </div>
+
+          <div id="summary-stats-grid" class="summary-grid">
+            <!-- Dynamically populated stats cards -->
+          </div>
+
+          <div class="summary-footer">
+            <button id="btn-summary-replay" class="tv-btn tv-btn-primary" data-focusable style="padding:1rem 2.5rem; font-size:1.3rem;">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
+              <span>Rejouer</span>
+            </button>
+            <button id="btn-summary-back" class="tv-btn" data-focusable style="padding:1rem 2.5rem; font-size:1.3rem;">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"></polyline></svg>
+              <span>Retour au Catalogue</span>
+            </button>
+          </div>
+        </div>
+      </section>
+
+    </div>
+  </div>
+
+  <!-- ========================================================================
+       VIDEO STAGE VIEWPORT (FULLSCREEN YOUTUBE + TRANSPARENT CANVAS + HUD)
+       ======================================================================== -->
+  <div id="video-stage" class="video-stage-container">
+    <div id="yt-player-iframe-slot"></div>
+    <canvas id="gameplay-canvas-overlay"></canvas>
+
+    <!-- LIVE HUD OVERLAY -->
+    <div class="live-hud-layer">
+      <!-- Top HUD Header -->
+      <div class="hud-top-bar">
+        <div class="flex items-center gap-3">
+          <span id="hud-activity-type" class="hud-title-badge">JEU D'ACTION</span>
+          <span id="hud-activity-name" style="font-size:1.1rem; font-weight:700; color:#cbd5e1;">Titre...</span>
+          <div id="sim-mode-indicator" class="sim-mode-banner">Simulateur Pas Actif (Alt+L/R)</div>
+        </div>
+
+        <div id="game-hud-top-stats" class="hud-lives-score-group">
+          <!-- Game Mode Top Stats -->
+          <div class="hud-stat-pill">
+            <span style="font-size:0.85rem; color:var(--text-muted);">VIES</span>
+            <span id="hud-lives-hearts" style="font-size:1.4rem;">❤️❤️❤️</span>
+          </div>
+          <div class="hud-stat-pill">
+            <span style="font-size:0.85rem; color:var(--text-muted);">SCORE</span>
+            <span id="hud-score-display" class="hud-score-val">0</span>
+          </div>
+          <div id="hud-combo-container" class="hud-combo-badge" style="display:none;">
+            COMBO x<span id="hud-multiplier-val">1</span> (<span id="hud-combo-count">0</span>)
+          </div>
+        </div>
+      </div>
+
+      <!-- VIRTUAL RUN COCKPIT HUD (Visible only during Virtual Run) -->
+      <div id="run-cockpit-hud" class="run-cockpit-hud" style="display:none;">
+        <div class="run-metrics-grid">
+          <div class="run-metric-cell">
+            <span id="run-val-steps" class="run-metric-num">0</span>
+            <span class="run-metric-unit">PAS TOTAUX</span>
+          </div>
+          <div class="run-metric-cell">
+            <span id="run-val-speed" class="run-metric-num">0.0</span>
+            <span class="run-metric-unit">VITESSE KM/H</span>
+          </div>
+          <div class="run-metric-cell">
+            <span id="run-val-cadence" class="run-metric-num">0</span>
+            <span class="run-metric-unit">CADENCE PPM</span>
+          </div>
+          <div class="run-metric-cell">
+            <span id="run-val-distance" class="run-metric-num">0.00</span>
+            <span class="run-metric-unit">DISTANCE KM</span>
+          </div>
+          <div class="run-metric-cell">
+            <span id="run-val-time" class="run-metric-num">00:00</span>
+            <span class="run-metric-unit">TEMPS EN COURSE</span>
+          </div>
+          <div class="run-metric-cell">
+            <span id="run-val-calories" class="run-metric-num">0</span>
+            <span class="run-metric-unit">KCAL (MET)</span>
+          </div>
+
+          <!-- Feet Tracker (L1 / R1) -->
+          <div class="feet-tracker-box">
+            <div id="foot-left-indicator" class="foot-indicator">
+              <span>L1</span>
+              <span style="font-size:0.6rem;">GAUCHE</span>
+            </div>
+            <div id="foot-right-indicator" class="foot-indicator">
+              <span>R1</span>
+              <span style="font-size:0.6rem;">DROITE</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Video Progress Bar with Checkpoints -->
+        <div class="hud-progress-wrapper">
+          <div id="hud-progress-fill" class="hud-progress-bar"></div>
+        </div>
+      </div>
+
+      <!-- Pre-start Prompt Banner if autoplay blocked -->
+      <div id="prestart-prompt-overlay" style="position:absolute; inset:0; background:rgba(0,0,0,0.8); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1.5rem; pointer-events:auto;">
+        <h2 style="font-size:2.8rem; font-weight:900;">Prêt pour la séance ?</h2>
+        <p style="font-size:1.3rem; color:var(--text-muted); max-width:600px; text-align:center;">Appuyez sur OK pour démarrer la vidéo et lancer le suivi.</p>
+        <button id="btn-prestart-confirm" class="tv-btn tv-btn-primary" data-focusable style="font-size:1.5rem; padding:1.2rem 3rem;">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+          <span>Démarrer l'Activité (OK)</span>
+        </button>
+      </div>
+
+      <!-- Player Error Overlay -->
+      <div id="player-error-overlay" style="position:absolute; inset:0; background:rgba(15,23,42,0.95); display:none; flex-direction:column; align-items:center; justify-content:center; gap:1.5rem; pointer-events:auto; text-align:center; padding:2rem;">
+        <div style="font-size:4rem;">⚠️</div>
+        <h2 id="player-error-title" style="font-size:2.4rem; font-weight:900; color:#ef4444;">Erreur de lecture vidéo</h2>
+        <p id="player-error-message" style="font-size:1.2rem; color:#cbd5e1; max-width:650px;">Cette vidéo YouTube ne permet pas l'intégration ou a été retirée.</p>
+        <button id="btn-player-error-back" class="tv-btn tv-btn-primary" data-focusable style="font-size:1.2rem; padding:0.8rem 2rem;">Retour au catalogue</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================================
+       MODAL DIALOGS (TRAPPED SPATIAL FOCUS)
+       ======================================================================== -->
+
+  <!-- 1. PAUSE DIALOG -->
+  <div id="dialog-pause" class="tv-dialog-backdrop">
+    <div class="tv-dialog-box">
+      <div class="tv-dialog-title">Séance en Pause</div>
+      <div class="tv-dialog-body">Que souhaitez-vous faire ? La vidéo reprendra dès que vous choisissez de continuer.</div>
+      <div class="tv-dialog-actions" style="flex-direction:column; align-items:stretch;">
+        <button id="btn-pause-resume" class="tv-btn tv-btn-primary" data-focusable>▶ Reprendre l'activité</button>
+        <button id="btn-pause-restart" class="tv-btn" data-focusable>↺ Recommencer du début</button>
+        <button id="btn-pause-controls" class="tv-btn" data-focusable>? Guide des contrôles</button>
+        <button id="btn-pause-quit" class="tv-btn" data-focusable style="border-color:#ef4444; color:#f87171;">✕ Quitter la séance</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. EXIT CONFIRM DIALOG -->
+  <div id="dialog-exit" class="tv-dialog-backdrop">
+    <div class="tv-dialog-box">
+      <div class="tv-dialog-title">Quitter FitTV Arena ?</div>
+      <div class="tv-dialog-body">Êtes-vous sûr de vouloir fermer l'application et retourner à l'accueil Android TV ?</div>
+      <div class="tv-dialog-actions">
+        <button id="btn-exit-cancel" class="tv-btn tv-btn-primary" data-focusable>Non, Rester</button>
+        <button id="btn-exit-confirm" class="tv-btn" data-focusable style="border-color:#ef4444; color:#f87171;">Oui, Quitter</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. CONTROLS HELP DIALOG -->
+  <div id="dialog-controls" class="tv-dialog-backdrop">
+    <div class="tv-dialog-box" style="max-width:850px;">
+      <div class="tv-dialog-title">Guide des Contrôles TV & Manette</div>
+      <div class="tv-dialog-body" style="font-size:0.95rem;">
+        <table style="width:100%; border-collapse:collapse; margin-bottom:1rem;">
+          <thead>
+            <tr style="border-bottom:2px solid var(--border-color); text-align:left; color:var(--focus-ring);">
+              <th style="padding:0.5rem;">Action</th>
+              <th style="padding:0.5rem;">Télécommande TV</th>
+              <th style="padding:0.5rem;">Manette / Tapis de Sol</th>
+              <th style="padding:0.5rem;">Clavier PC</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr style="border-bottom:1px solid rgba(255,255,255,0.06);">
+              <td style="padding:0.5rem; font-weight:700;">Navigation</td>
+              <td>Flèches D-Pad</td>
+              <td>D-Pad / Stick Gauche</td>
+              <td>Flèches Directionnelles</td>
+            </tr>
+            <tr style="border-bottom:1px solid rgba(255,255,255,0.06);">
+              <td style="padding:0.5rem; font-weight:700;">Sélection / Valider</td>
+              <td>Touche OK</td>
+              <td>Bouton A (0)</td>
+              <td>Entrée / Espace</td>
+            </tr>
+            <tr style="border-bottom:1px solid rgba(255,255,255,0.06);">
+              <td style="padding:0.5rem; font-weight:700;">Retour / Quitter</td>
+              <td>Touche Retour</td>
+              <td>Bouton B (1)</td>
+              <td>Échap / Backspace</td>
+            </tr>
+            <tr style="border-bottom:1px solid rgba(255,255,255,0.06); background:rgba(16,185,129,0.1);">
+              <td style="padding:0.5rem; font-weight:700; color:var(--accent-run);">PAS GAUCHE (Run)</td>
+              <td>-</td>
+              <td><strong>L1 (Bouton 4)</strong> [Pied Gauche]</td>
+              <td><strong>Alt + L</strong> (ou L)</td>
+            </tr>
+            <tr style="border-bottom:1px solid rgba(255,255,255,0.06); background:rgba(16,185,129,0.1);">
+              <td style="padding:0.5rem; font-weight:700; color:var(--accent-run);">PAS DROIT (Run)</td>
+              <td>-</td>
+              <td><strong>R1 (Bouton 5)</strong> [Pied Droit]</td>
+              <td><strong>Alt + R</strong> (ou R)</td>
+            </tr>
+            <tr style="border-bottom:1px solid rgba(255,255,255,0.06);">
+              <td style="padding:0.5rem; font-weight:700;">Saut / Glissade (Jeu)</td>
+              <td>Flèches Haut / Bas</td>
+              <td>Bouton A / Stick Bas</td>
+              <td>Flèches Haut / Bas</td>
+            </tr>
+            <tr>
+              <td style="padding:0.5rem; font-weight:700;">Frappe / Tranche (Jeu)</td>
+              <td>-</td>
+              <td>Boutons X (2) / Y (3)</td>
+              <td>Touches F (Punch) / D (Slash)</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="tv-dialog-actions">
+        <button id="btn-close-controls" class="tv-btn tv-btn-primary" data-focusable>Compris !</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. ON-SCREEN TV KEYBOARD DIALOG -->
+  <div id="dialog-keyboard" class="tv-dialog-backdrop">
+    <div class="tv-dialog-box" style="max-width:820px;">
+      <div class="tv-dialog-title">Saisie du Nom de Joueur</div>
+      
+      <div style="background:#090e1a; border:2px solid var(--focus-ring); padding:0.8rem 1.25rem; border-radius:8px;">
+        <span id="tv-keyboard-input-preview" style="font-family:var(--font-mono); font-size:2rem; font-weight:900; color:#fff; letter-spacing:0.08em;">JOUEUR 1</span>
+      </div>
+
+      <!-- TV Grid Navigable Keys -->
+      <div id="tv-keyboard-grid" class="tv-keyboard-container">
+        <!-- Rendered dynamically via JS for clean geometric spatial navigation -->
+      </div>
+
+      <div class="tv-dialog-actions" style="margin-top:0.5rem;">
+        <button id="btn-keyboard-cancel" class="tv-btn" data-focusable>Annuler</button>
+        <button id="btn-keyboard-confirm" class="tv-btn tv-btn-primary" data-focusable>Valider le Nom</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 5. CUSTOM SCRIPT / YOUTUBE IMPORT DIALOG -->
+  <div id="dialog-custom-script" class="tv-dialog-backdrop">
+    <div class="tv-dialog-box" style="max-width:880px;">
+      <div class="tv-dialog-title" id="custom-dialog-title">Charger un Script Personnalisé</div>
+      <div class="tv-dialog-body" style="font-size:0.95rem;">
+        <p style="color:var(--text-muted); margin-bottom:1.2rem;">
+          Importez un script JSON généré par VideoPlay Studio ou saisissez une vidéo YouTube pour créer une session interactive.
+        </p>
+
+        <!-- Mode selector: YouTube ID / Fichier JSON / JSON Brut -->
+        <div class="flex gap-2" style="margin-bottom:1.25rem;">
+          <button id="btn-tab-mode-yt" class="tv-btn tv-btn-primary tab-mode-btn" data-focusable>1. ID / Lien YouTube</button>
+          <button id="btn-tab-mode-file" class="tv-btn tab-mode-btn" data-focusable>2. Fichier JSON</button>
+          <button id="btn-tab-mode-raw" class="tv-btn tab-mode-btn" data-focusable>3. Coller JSON Brut</button>
+        </div>
+
+        <!-- TAB 1: YouTube ID / Link -->
+        <div id="tab-content-yt" class="custom-script-tab">
+          <label style="font-size:0.9rem; font-weight:700; color:var(--text-muted);">ID YouTube ou URL (watch, youtu.be, shorts)</label>
+          <div class="flex gap-2" style="margin-top:0.4rem; margin-bottom:1rem;">
+            <input type="text" id="custom-yt-input" placeholder="Ex: XTgSxQ6ZLM0 ou https://youtu.be/..." style="background:#090e1a; border:2px solid var(--border-color); color:#fff; font-size:1.1rem; padding:0.6rem 1rem; border-radius:8px; flex:1;" />
+            <button id="btn-open-yt-keyboard" class="tv-btn" data-focusable>Clavier TV</button>
+          </div>
+
+          <label style="font-size:0.9rem; font-weight:700; color:var(--text-muted);">Titre de la séance</label>
+          <input type="text" id="custom-title-input" placeholder="Ex: Ninja Rush 4K ou Session Sprint" style="background:#090e1a; border:2px solid var(--border-color); color:#fff; font-size:1.1rem; padding:0.6rem 1rem; border-radius:8px; width:100%; margin-top:0.4rem; margin-bottom:1rem;" />
+
+          <div class="flex items-center gap-3">
+            <span style="font-size:0.9rem; color:var(--text-muted);">Exemples rapides :</span>
+            <button id="btn-preset-ninja" class="tv-btn" data-focusable style="padding:0.4rem 0.8rem; font-size:0.85rem;">Ninja Parkour</button>
+            <button id="btn-preset-alps" class="tv-btn" data-focusable style="padding:0.4rem 0.8rem; font-size:0.85rem;">Sentier Alpin</button>
+          </div>
+        </div>
+
+        <!-- TAB 2: File JSON -->
+        <div id="tab-content-file" class="custom-script-tab" style="display:none;">
+          <div style="border:2px dashed var(--border-color); border-radius:12px; padding:2rem; text-align:center;">
+            <div style="font-size:2.5rem; margin-bottom:0.5rem;">📁</div>
+            <div style="font-size:1.1rem; font-weight:800; margin-bottom:0.4rem;">Sélectionnez un fichier .json sur votre appareil</div>
+            <div style="font-size:0.85rem; color:var(--text-muted); margin-bottom:1.2rem;">Fichiers compatibles exportés depuis VideoPlay Studio ou ./games/ / ./virtual-run/</div>
+            <input type="file" id="custom-file-hidden-input" accept=".json,application/json" style="display:none;" />
+            <button id="btn-trigger-file-select" class="tv-btn tv-btn-primary" data-focusable style="padding:0.8rem 2rem;">
+              <span>Parcourir les fichiers (.json)</span>
+            </button>
+            <div id="custom-file-selected-name" style="margin-top:0.8rem; color:var(--focus-ring); font-weight:700; font-size:0.95rem;"></div>
+          </div>
+        </div>
+
+        <!-- TAB 3: Raw JSON Textarea -->
+        <div id="tab-content-raw" class="custom-script-tab" style="display:none;">
+          <label style="font-size:0.9rem; font-weight:700; color:var(--text-muted);">Contenu JSON brut du script :</label>
+          <textarea id="custom-raw-json-textarea" rows="7" style="width:100%; background:#090e1a; border:2px solid var(--border-color); color:#38bdf8; font-family:var(--font-mono); font-size:0.85rem; padding:0.8rem; border-radius:8px; margin-top:0.4rem; resize:none;" placeholder='{"type": "game", "video": {"videoId": "XTgSxQ6ZLM0"}, "game": {"timeline": [...]}}'></textarea>
+        </div>
+
+        <div id="custom-script-error-msg" style="color:#ef4444; font-weight:700; font-size:0.9rem; margin-top:0.75rem; display:none;"></div>
+      </div>
+
+      <div class="tv-dialog-actions" style="margin-top:1rem;">
+        <button id="btn-custom-cancel" class="tv-btn" data-focusable>Annuler</button>
+        <button id="btn-custom-launch" class="tv-btn tv-btn-primary" data-focusable>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+          <span>Enregistrer & Lancer</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- FLOATING TV TOAST ROOT -->
+  <div id="tv-toast-container" class="tv-toast-root"></div>
+
+  <!-- YouTube IFrame Player API -->
+  <script src="https://www.youtube.com/iframe_api"></script>
+
+  <!-- Main FitTV Arena Engine & Architecture -->
+  <script src="./app.js"></script>
+
+</body>
+</html>

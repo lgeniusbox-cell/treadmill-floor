@@ -1,0 +1,204 @@
+{
+  "schemaVersion": "1.0",
+  "type": "game",
+  "meta": {
+    "title": "Ninja Dash - Course Parkour",
+    "difficulty": "normal",
+    "level": 2,
+    "author": "FitTV Arena Studio",
+    "createdAt": "2026-10-23T12:00:00Z"
+  },
+  "video": {
+    "source": "youtube",
+    "videoId": "XTgSxQ6ZLM0",
+    "url": "https://www.youtube.com/watch?v=XTgSxQ6ZLM0",
+    "title": "Ninja Dash Parkour Action 60fps",
+    "durationSeconds": 90.0,
+    "effectiveDurationSeconds": 75.0,
+    "trimStart": 3.0,
+    "trimEnd": 78.0,
+    "cuts": [
+      { "id": "cut_1", "start": 30.0, "end": 35.0 }
+    ],
+    "keptSegments": [
+      { "start": 3.0, "end": 30.0, "duration": 27.0 },
+      { "start": 35.0, "end": 78.0, "duration": 43.0 }
+    ],
+    "audioMuted": false
+  },
+  "game": {
+    "rules": {
+      "maxLives": 3,
+      "maxMisses": 5,
+      "timingWindowMs": {
+        "perfect": 120,
+        "good": 300
+      },
+      "scoring": {
+        "perfect": 100,
+        "good": 50,
+        "comboMultiplierStep": 5,
+        "maxMultiplier": 4
+      },
+      "winCondition": "reach_end"
+    },
+    "actions": [
+      "STARTING COUNT",
+      "GO",
+      "JUMP",
+      "RIGHT",
+      "LEFT",
+      "SLIDE DOWN",
+      "SLASH",
+      "PUNCH",
+      "END",
+      "WIN"
+    ],
+    "timeline": [
+      {
+        "id": "evt_start",
+        "time": 4.5,
+        "action": "STARTING COUNT",
+        "showOnScreen": true,
+        "duration": 1.0,
+        "window": { "before": 0.4, "after": 0.4 },
+        "points": 50,
+        "hint": "3.. 2.. 1.. Préparez-vous !",
+        "visualCue": "countdown",
+        "required": false
+      },
+      {
+        "id": "evt_go",
+        "time": 7.0,
+        "action": "GO",
+        "showOnScreen": true,
+        "duration": 0.8,
+        "window": { "before": 0.35, "after": 0.35 },
+        "points": 100,
+        "hint": "C'est parti ! Appuyez sur OK !",
+        "visualCue": "go",
+        "required": true
+      },
+      {
+        "id": "evt_1",
+        "time": 11.0,
+        "action": "JUMP",
+        "showOnScreen": true,
+        "duration": 0.6,
+        "window": { "before": 0.3, "after": 0.3 },
+        "points": 100,
+        "hint": "Sautez au-dessus de la haie ! (Haut / A)",
+        "visualCue": "jump",
+        "required": true
+      },
+      {
+        "id": "evt_2",
+        "time": 16.5,
+        "action": "LEFT",
+        "showOnScreen": true,
+        "duration": 0.5,
+        "window": { "before": 0.3, "after": 0.3 },
+        "points": 100,
+        "hint": "Esquive à Gauche ! (Gauche)",
+        "visualCue": "left",
+        "required": true
+      },
+      {
+        "id": "evt_3",
+        "time": 21.0,
+        "action": "SLIDE DOWN",
+        "showOnScreen": true,
+        "duration": 0.7,
+        "window": { "before": 0.3, "after": 0.3 },
+        "points": 100,
+        "hint": "Glissez sous la barrière ! (Bas)",
+        "visualCue": "slide_down",
+        "required": true
+      },
+      {
+        "id": "evt_4",
+        "time": 26.0,
+        "action": "PUNCH",
+        "showOnScreen": true,
+        "duration": 0.5,
+        "window": { "before": 0.3, "after": 0.3 },
+        "points": 100,
+        "hint": "Frappez la cible ! (F / X)",
+        "visualCue": "punch",
+        "required": true
+      },
+      {
+        "id": "evt_5",
+        "time": 38.0,
+        "action": "SLASH",
+        "showOnScreen": true,
+        "duration": 0.5,
+        "window": { "before": 0.3, "after": 0.3 },
+        "points": 100,
+        "hint": "Tranchez le bambou ! (D / Y)",
+        "visualCue": "slash",
+        "required": true
+      },
+      {
+        "id": "evt_6",
+        "time": 44.0,
+        "action": "RIGHT",
+        "showOnScreen": false,
+        "duration": 0.5,
+        "window": { "before": 0.3, "after": 0.3 },
+        "points": 150,
+        "hint": "Esquive réflexe ! (Droite)",
+        "visualCue": "right",
+        "required": true
+      },
+      {
+        "id": "evt_7",
+        "time": 50.0,
+        "action": "JUMP",
+        "showOnScreen": true,
+        "duration": 0.6,
+        "window": { "before": 0.3, "after": 0.3 },
+        "points": 100,
+        "hint": "Grand Saut du toit ! (Haut / A)",
+        "visualCue": "jump",
+        "required": true
+      },
+      {
+        "id": "evt_8",
+        "time": 57.0,
+        "action": "PUNCH",
+        "showOnScreen": true,
+        "duration": 0.5,
+        "window": { "before": 0.3, "after": 0.3 },
+        "points": 100,
+        "hint": "Frappe finale ! (F / X)",
+        "visualCue": "punch",
+        "required": true
+      },
+      {
+        "id": "evt_end",
+        "time": 68.0,
+        "action": "END",
+        "showOnScreen": true,
+        "duration": 0.8,
+        "window": { "before": 0.4, "after": 0.4 },
+        "points": 100,
+        "hint": "Franchissez la ligne d'arrivée !",
+        "visualCue": "end",
+        "required": true
+      },
+      {
+        "id": "evt_win",
+        "time": 73.0,
+        "action": "WIN",
+        "showOnScreen": true,
+        "duration": 1.0,
+        "window": { "before": 0.5, "after": 0.5 },
+        "points": 200,
+        "hint": "Victoire Ninja !",
+        "visualCue": "win",
+        "required": false
+      }
+    ]
+  }
+}

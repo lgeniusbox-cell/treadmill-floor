@@ -504,6 +504,28 @@
     </div>
   </div>
 
+  <!-- 1.5. GAME OVER DIALOG (AUTO-RESTART IN 2 SECONDS) -->
+  <div id="dialog-gameover" class="tv-dialog-backdrop">
+    <div class="tv-dialog-box" style="text-align:center; max-width:620px; border-color:rgba(239, 68, 68, 0.7); box-shadow:0 0 40px rgba(239, 68, 68, 0.45); padding:2rem 2.5rem;">
+      <div style="font-size:3.8rem; margin-bottom:0.2rem; filter:drop-shadow(0 0 16px rgba(239, 68, 68, 0.6));">💥</div>
+      <div class="tv-dialog-title" style="color:#ef4444; font-size:2.6rem; font-weight:900; letter-spacing:0.06em; margin-bottom:0.2rem;">GAME OVER</div>
+      <div id="gameover-stats-line" style="font-size:1.2rem; color:#cbd5e1; margin-bottom:1.2rem; font-weight:700;">Score final : 0 pts • Vies épuisées !</div>
+      
+      <div id="gameover-timer-pill" style="display:inline-flex; align-items:center; justify-content:center; gap:0.75rem; background:rgba(239, 68, 68, 0.16); border:2px solid #ef4444; border-radius:9999px; padding:0.75rem 2rem; color:#fca5a5; font-size:1.3rem; font-weight:800; margin:0 auto 1.5rem auto;">
+        <span>⏳ Redémarrage automatique dans <span id="gameover-countdown-seconds" class="countdown-urgent" style="display:inline-block; color:#ffffff; font-size:1.9rem; font-weight:900; min-width:28px; text-align:center;">2</span>s</span>
+      </div>
+
+      <div class="tv-dialog-actions" style="justify-content:center; gap:1.2rem;">
+        <button id="btn-gameover-restart-now" class="tv-btn tv-btn-primary" data-focusable style="background:#ef4444; border-color:#f87171; font-size:1.2rem; padding:0.9rem 2.2rem; font-weight:800;">
+          ↺ Recommencer (OK)
+        </button>
+        <button id="btn-gameover-exit" class="tv-btn" data-focusable style="font-size:1.2rem; padding:0.9rem 2rem; border-color:#475569; color:#cbd5e1;">
+          ✕ Quitter vers la liste
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- 2. EXIT CONFIRM DIALOG -->
   <div id="dialog-exit" class="tv-dialog-backdrop">
     <div class="tv-dialog-box">

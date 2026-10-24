@@ -1705,19 +1705,31 @@
       tvPlayer.pausePlayback();
 
       const isPB = profile.recordGameScore(this.item.id, this.state.score);
-      if (victory) sound.play('win');
-      else sound.play('fail');
-
-      app.showGameSummary({
-        victory,
-        score: this.state.score,
-        isPB,
-        perfectHits: this.state.perfectHits,
-        goodHits: this.state.goodHits,
-        misses: this.state.misses,
-        maxCombo: this.state.maxCombo,
-        item: this.item
-      });
+      if (victory) {
+        sound.play('win');
+        app.showGameSummary({
+          victory: true,
+          score: this.state.score,
+          isPB,
+          perfectHits: this.state.perfectHits,
+          goodHits: this.state.goodHits,
+          misses: this.state.misses,
+          maxCombo: this.state.maxCombo,
+          item: this.item
+        });
+      } else {
+        sound.play('fail');
+        app.handleGameOver({
+          victory: false,
+          score: this.state.score,
+          isPB,
+          perfectHits: this.state.perfectHits,
+          goodHits: this.state.goodHits,
+          misses: this.state.misses,
+          maxCombo: this.state.maxCombo,
+          item: this.item
+        });
+      }
     }
 
     render() {
@@ -2109,6 +2121,7 @@
       this.activeActivityItem = null;
       this.keyboardBuffer = "";
       this.isSimulationMode = true;
+      this.gameOverTimerInterval = null;
 
       // Subscribe to Back and Menu semantic events
       bus.on('BACK', () => this.handleBack());
@@ -2251,6 +2264,7 @@
 
     navigateTo(screenId) {
       if (this.currentScreen === screenId) return;
+      this.cancelGameOverTimer();
 
       document.querySelectorAll('.tv-screen').forEach(s => s.classList.remove('active'));
       const target = document.getElementById(screenId);
@@ -2271,6 +2285,14 @@
       // 1. If any modal dialog is open, close it
       const activeDialog = document.querySelector('.tv-dialog-backdrop.active');
       if (activeDialog) {
+        if (activeDialog.id === 'dialog-gameover') {
+          this.cancelGameOverTimer();
+          activeDialog.classList.remove('active');
+          nav.releaseModal();
+          document.getElementById('video-stage').classList.remove('active');
+          this.navigateTo('screen-games-list');
+          return;
+        }
         activeDialog.classList.remove('active');
         nav.releaseModal();
         return;
@@ -2380,6 +2402,75 @@
       };
     }
 
+    handleGameOver(res) {
+      bus.emit('GAME_FINISHED', res);
+
+      const dlg = document.getElementById('dialog-gameover');
+      if (!dlg) {
+        this.showGameSummary(res);
+        return;
+      }
+
+      const statsLine = document.getElementById('gameover-stats-line');
+      if (statsLine) {
+        statsLine.textContent = `Score : ${res.score} pts • Vies épuisées !`;
+      }
+
+      const countEl = document.getElementById('gameover-countdown-seconds');
+      if (countEl) countEl.textContent = '2';
+
+      dlg.classList.add('active');
+      nav.trapInModal(dlg);
+      const btnRestart = document.getElementById('btn-gameover-restart-now');
+      if (btnRestart) nav.setFocus(btnRestart);
+
+      // Start 2-second auto-restart timer
+      this.cancelGameOverTimer();
+      const startTime = Date.now();
+      const durationMs = 2000;
+
+      this.gameOverTimerInterval = setInterval(() => {
+        const elapsed = Date.now() - startTime;
+        const remaining = Math.max(0, durationMs - elapsed);
+        const secondsLeft = Math.ceil(remaining / 1000);
+
+        if (countEl) countEl.textContent = String(secondsLeft);
+
+        if (remaining <= 0) {
+          this.cancelGameOverTimer();
+          this.restartGameOverActivity();
+        }
+      }, 100);
+    }
+
+    cancelGameOverTimer() {
+      if (this.gameOverTimerInterval) {
+        clearInterval(this.gameOverTimerInterval);
+        this.gameOverTimerInterval = null;
+      }
+      const replayBtn = document.getElementById('btn-summary-replay');
+      if (replayBtn) {
+        const span = replayBtn.querySelector('span');
+        if (span) span.textContent = "Rejouer";
+      }
+    }
+
+    restartGameOverActivity() {
+      this.cancelGameOverTimer();
+      const dlg = document.getElementById('dialog-gameover');
+      if (dlg) dlg.classList.remove('active');
+      nav.releaseModal();
+
+      if (this.activeActivityItem && this.activeActivityItem.type === 'game') {
+        const item = this.activeActivityItem;
+        tvPlayer.startPlayback();
+        gameEngine.start(item);
+        bus.emit('GAME_STARTED', { id: item.id });
+        sound.play('go');
+        this.showToast("Partie redémarrée !");
+      }
+    }
+
     showGameSummary(res) {
       document.getElementById('video-stage').classList.remove('active');
       this.navigateTo('screen-summary');
@@ -2387,7 +2478,7 @@
       document.getElementById('summary-title').textContent = res.victory ? "VICTOIRE !" : "GAME OVER";
       document.getElementById('summary-subtitle').textContent = res.victory
         ? "Parcours franchi avec brio !"
-        : "N'abandonnez pas, réessayez pour battre votre record !";
+        : "Redémarrage automatique dans 2 secondes...";
       document.getElementById('summary-trophy').textContent = res.victory ? "🏆" : "💥";
 
       const grid = document.getElementById('summary-stats-grid');
@@ -2411,6 +2502,35 @@
       `;
 
       bus.emit('GAME_FINISHED', res);
+
+      if (!res.victory) {
+        this.cancelGameOverTimer();
+        const start = Date.now();
+        const replayBtn = document.getElementById('btn-summary-replay');
+        if (replayBtn) {
+          const span = replayBtn.querySelector('span');
+          if (span) span.textContent = "Recommencer (2s)";
+        }
+        this.gameOverTimerInterval = setInterval(() => {
+          const elapsed = Date.now() - start;
+          const remaining = Math.max(0, 2000 - elapsed);
+          const sec = Math.ceil(remaining / 1000);
+          if (replayBtn) {
+            const span = replayBtn.querySelector('span');
+            if (span) span.textContent = `Recommencer (${sec}s)`;
+          }
+          if (remaining <= 0) {
+            this.cancelGameOverTimer();
+            if (this.currentScreen === 'screen-summary' && this.activeActivityItem) {
+              if (replayBtn) {
+                const span = replayBtn.querySelector('span');
+                if (span) span.textContent = "Rejouer";
+              }
+              this.startActivity(this.activeActivityItem, 'game');
+            }
+          }
+        }, 100);
+      }
     }
 
     showRunSummary(res) {
@@ -2564,13 +2684,39 @@
         this.showToast("Scores réinitialisés");
       });
 
+      // Game Over Dialog Buttons
+      document.getElementById('btn-gameover-restart-now')?.addEventListener('click', () => {
+        this.restartGameOverActivity();
+      });
+
+      document.getElementById('btn-gameover-exit')?.addEventListener('click', () => {
+        this.cancelGameOverTimer();
+        const dlg = document.getElementById('dialog-gameover');
+        if (dlg) dlg.classList.remove('active');
+        nav.releaseModal();
+        document.getElementById('video-stage').classList.remove('active');
+        this.navigateTo('screen-games-list');
+      });
+
       // Summary buttons
       document.getElementById('btn-summary-replay')?.addEventListener('click', () => {
+        this.cancelGameOverTimer();
+        const replayBtn = document.getElementById('btn-summary-replay');
+        if (replayBtn) {
+          const span = replayBtn.querySelector('span');
+          if (span) span.textContent = "Rejouer";
+        }
         if (this.activeActivityItem) {
           this.startActivity(this.activeActivityItem, this.activeActivityItem.type);
         }
       });
       document.getElementById('btn-summary-back')?.addEventListener('click', () => {
+        this.cancelGameOverTimer();
+        const replayBtn = document.getElementById('btn-summary-replay');
+        if (replayBtn) {
+          const span = replayBtn.querySelector('span');
+          if (span) span.textContent = "Rejouer";
+        }
         this.navigateTo(this.activeActivityItem?.type === 'game' ? 'screen-games-list' : 'screen-runs-list');
       });
 

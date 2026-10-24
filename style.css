@@ -872,6 +872,16 @@ html, body {
   gap: 1rem;
 }
 
+@keyframes countdown-pulse {
+  0% { transform: scale(1); filter: drop-shadow(0 0 4px rgba(255, 255, 255, 0.4)); }
+  50% { transform: scale(1.22); filter: drop-shadow(0 0 16px rgba(239, 68, 68, 0.95)); }
+  100% { transform: scale(1); filter: drop-shadow(0 0 4px rgba(255, 255, 255, 0.4)); }
+}
+
+.countdown-urgent {
+  animation: countdown-pulse 0.7s infinite ease-in-out;
+}
+
 /* ON-SCREEN TV KEYBOARD */
 .tv-keyboard-container {
   display: flex;

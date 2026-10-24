@@ -74,7 +74,8 @@
       strideLengthM: 0.75,
       weightKg: 70,
       soundEnabled: true,
-      calibrationOffsetMs: 0
+      calibrationOffsetMs: 0,
+      videoFitMode: 'cover'          // 'cover' (Plein écran immersif) | 'contain' (Ajusté 16:9)
     }
   };
 
@@ -962,6 +963,8 @@
       const createPlayer = () => {
         try {
           this.player = new window.YT.Player('yt-player-inner', {
+            width: '100%',
+            height: '100%',
             videoId: item.videoId,
             playerVars: {
               enablejsapi: 1,
@@ -2168,6 +2171,44 @@
         const ind = document.getElementById('sim-mode-indicator');
         if (ind) ind.style.display = this.isSimulationMode ? 'flex' : 'none';
         this.showToast(this.isSimulationMode ? "Mode simulation activé (Alt+L/R)" : "Mode simulation désactivé");
+      });
+
+      // Video Fit Mode Toggle (Cover / Contain)
+      const updateFitUI = () => {
+        const isContain = profile.profile.videoFitMode === 'contain';
+        const stage = document.getElementById('video-stage');
+        if (stage) stage.classList.toggle('fit-contain', isContain);
+
+        const lblSetting = document.getElementById('label-fit-mode-setting');
+        if (lblSetting) {
+          lblSetting.textContent = isContain
+            ? "Format : AJUSTÉ 16:9 (CONTAIN)"
+            : "Format : PLEIN ÉCRAN IMMERSIF (COVER)";
+        }
+        const btnPauseFit = document.getElementById('btn-pause-toggle-fit');
+        if (btnPauseFit) {
+          btnPauseFit.textContent = isContain
+            ? "⛶ Format : Ajusté 16:9 (Contain)"
+            : "⛶ Format : Plein écran (Cover)";
+        }
+      };
+
+      const toggleFitMode = () => {
+        profile.profile.videoFitMode = profile.profile.videoFitMode === 'contain' ? 'cover' : 'contain';
+        profile.save();
+        updateFitUI();
+        this.showToast(profile.profile.videoFitMode === 'contain'
+          ? "Format vidéo : Ajusté 16:9 (Contain)"
+          : "Format vidéo : Plein écran immersif (Cover)");
+      };
+
+      document.getElementById('btn-toggle-fit-mode')?.addEventListener('click', toggleFitMode);
+      document.getElementById('btn-pause-toggle-fit')?.addEventListener('click', toggleFitMode);
+      updateFitUI();
+
+      // Window resize handler to maintain full screen canvas and video
+      window.addEventListener('resize', () => {
+        gameEngine.resizeCanvas();
       });
 
       // Reset scores

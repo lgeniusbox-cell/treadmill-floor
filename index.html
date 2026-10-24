@@ -320,6 +320,14 @@
             <h3 style="font-size:1.5rem; font-weight:800; margin-bottom:1.5rem;">Développement & Simulation</h3>
             
             <div style="margin-bottom:1.5rem;">
+              <div style="font-size:1.1rem; font-weight:800; margin-bottom:0.4rem;">Format d'Affichage Vidéo</div>
+              <p style="font-size:0.9rem; color:var(--text-muted); margin-bottom:0.75rem;">Remplir l'écran (Plein écran immersif sans bandes noires) ou Ajuster (Respect 16:9 avec bandes noires).</p>
+              <button id="btn-toggle-fit-mode" class="tv-btn tv-btn-primary" data-focusable>
+                <span id="label-fit-mode-setting">Format : PLEIN ÉCRAN IMMERSIF (COVER)</span>
+              </button>
+            </div>
+
+            <div style="margin-bottom:1.5rem;">
               <div style="font-size:1.1rem; font-weight:800; margin-bottom:0.4rem;">Mode Simulation Pas (Alt+L / Alt+R)</div>
               <p style="font-size:0.9rem; color:var(--text-muted); margin-bottom:0.75rem;">Permet de tester la course virtuelle au clavier sur PC sans tapis de sol physique.</p>
               <button id="btn-toggle-sim-mode" class="tv-btn tv-btn-primary" data-focusable>
@@ -480,6 +488,7 @@
       <div class="tv-dialog-actions" style="flex-direction:column; align-items:stretch;">
         <button id="btn-pause-resume" class="tv-btn tv-btn-primary" data-focusable>▶ Reprendre l'activité</button>
         <button id="btn-pause-restart" class="tv-btn" data-focusable>↺ Recommencer du début</button>
+        <button id="btn-pause-toggle-fit" class="tv-btn" data-focusable>⛶ Format vidéo : Plein écran (Cover)</button>
         <button id="btn-pause-controls" class="tv-btn" data-focusable>? Guide des contrôles</button>
         <button id="btn-pause-quit" class="tv-btn" data-focusable style="border-color:#ef4444; color:#f87171;">✕ Quitter la séance</button>
       </div>

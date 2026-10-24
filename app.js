@@ -60,7 +60,7 @@
       referenceSpeedKmh: 8.0,        // Speed corresponding to 1.0x video rate
       minSpeedKmh: 3.0,
       maxSpeedKmh: 18.0,
-      minPlaybackRate: 0.25,
+      minPlaybackRate: 0.05,
       maxPlaybackRate: 2.0,
       rateHysteresisKmh: 0.4,        // Prevents rate flickering
       speedSmoothingFactor: 0.25,    // Exponential moving average alpha
@@ -73,7 +73,7 @@
       theme: "adult",                // "kids" | "adult" | "pro"
       strideLengthM: 0.75,
       weightKg: 70,
-      soundEnabled: true,
+      soundEnabled: false,
       calibrationOffsetMs: 0,
       videoFitMode: 'cover'          // 'cover' (Plein écran immersif) | 'contain' (Ajusté 16:9)
     }

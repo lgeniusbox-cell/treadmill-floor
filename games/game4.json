@@ -1,11 +1,18 @@
 {
   "schemaVersion": "1.0",
   "type": "game",
+  "meta": {
+    "title": "tom and jerry",
+    "difficulty": "normal",
+    "level": 2,
+    "author": "FitTV Arena Studio",
+    "createdAt": "2026-10-24T18:59:45.936Z"
+  },
   "video": {
     "source": "youtube",
     "videoId": "4Fj0Qe7BY7k",
     "url": "https://www.youtube.com/watch?v=4Fj0Qe7BY7k",
-    "title": "Vidéo 4Fj0Qe7BY7k",
+    "title": "tom and jerry",
     "durationSeconds": 479,
     "effectiveDurationSeconds": 60,
     "trimStart": 0,
@@ -20,34 +27,10 @@
     ],
     "audioMuted": false
   },
-  "meta": {
-    "createdAt": "2026-10-24T18:30:04.627Z",
-    "author": "VideoPlay Studio User",
-    "difficulty": "normal"
-  },
   "game": {
-    "schemaVersion": "1.0",
-    "type": "game",
-    "timeline": [
-      {
-        "id": "evt_1792866604622_90ip",
-        "time": 11.33,
-        "action": "STARTING COUNT",
-        "showOnScreen": true,
-        "duration": 0.6,
-        "window": {
-          "before": 0.28,
-          "after": 0.28
-        },
-        "points": 100,
-        "hint": "STARTING COUNT",
-        "visualCue": "starting_count",
-        "required": true
-      }
-    ],
     "rules": {
+      "maxLives": 5,
       "maxMisses": 5,
-      "maxLives": 3,
       "timingWindowMs": {
         "perfect": 120,
         "good": 280
@@ -56,12 +39,32 @@
         "perfect": 100,
         "good": 50,
         "comboMultiplierStep": 5,
-        "maxMultiplier": 4,
-        "failPenalty": 0
+        "maxMultiplier": 4
       },
-      "winCondition": "reach_end",
-      "minScoreToWin": 500,
-      "loseCondition": "misses>=maxMisses"
-    }
+      "winCondition": "reach_end"
+    },
+    "actions": [
+      "STARTING COUNT",
+      "GO",
+      "JUMP",
+      "RIGHT",
+      "LEFT",
+      "SLIDE DOWN",
+      "SLASH",
+      "PUNCH",
+      "END",
+      "WIN"
+    ],
+    "timeline": [
+      {
+        "id": "evt_1792868427086_bbis",
+        "time": 13.94,
+        "action": "JUMP",
+        "showOnScreen": true,
+        "duration": 1.5,
+        "points": 100,
+        "hint": "JUMP"
+      }
+    ]
   }
 }

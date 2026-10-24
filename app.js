@@ -2744,7 +2744,7 @@
       this.setupOnScreenKeyboard();
 
       // Custom Script / YouTube Dialog Setup
-      this.setupCustomScriptDialog();
+      //this.setupCustomScriptDialog();
 
       // Open custom script dialog buttons from headers
       document.getElementById('btn-open-custom-game')?.addEventListener('click', () => {

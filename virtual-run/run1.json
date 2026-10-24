@@ -14,11 +14,11 @@
     "title": "Sentier des Crêtes Alpines 4K",
     "durationSeconds": 3000.0,
     "effectiveDurationSeconds": 3000.0,
-    "trimStart": 0.0,
-    "trimEnd": 110.0,
+    "trimStart": 600.0,
+    "trimEnd": 900.0,
     "cuts": [],
     "keptSegments": [
-      { "start": 0.0, "end": 110.0, "duration": 300.0 }
+      { "start": 600.0, "end": 900.0, "duration": 300.0 }
     ],
     "audioMuted": true
   },

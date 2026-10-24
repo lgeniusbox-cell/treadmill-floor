@@ -1,0 +1,52 @@
+{
+  "schemaVersion": "1.0",
+  "type": "virtual_run",
+  "meta": {
+    "title": "Corniche Méditerranéenne - Calanques 4K",
+    "difficulty": "normal",
+    "author": "FitTV Arena Studio",
+    "createdAt": "2026-10-23T12:00:00Z"
+  },
+  "video": {
+    "source": "youtube",
+    "videoId": "XTgSxQ6ZLM0",
+    "url": "https://www.youtube.com/watch?v=XTgSxQ6ZLM0",
+    "title": "Corniche Méditerranéenne 4K Trail",
+    "durationSeconds": 150.0,
+    "effectiveDurationSeconds": 135.0,
+    "trimStart": 5.0,
+    "trimEnd": 140.0,
+    "cuts": [],
+    "keptSegments": [
+      { "start": 5.0, "end": 140.0, "duration": 135.0 }
+    ],
+    "audioMuted": false
+  },
+  "virtualRun": {
+    "route": {
+      "name": "Corniche Méditerranéenne",
+      "location": "Marseille & Cassis",
+      "totalDistanceKm": 3.5,
+      "elevationGainM": 90,
+      "terrain": "côtier"
+    },
+    "defaultPaceMinPerKm": 5.2,
+    "speedMapping": {
+      "referenceSpeedKmh": 9.0,
+      "minSpeedKmh": 3.0,
+      "maxSpeedKmh": 18.0,
+      "videoPlaybackRateMin": 0.25,
+      "videoPlaybackRateMax": 2.0
+    },
+    "segments": [
+      { "start": 5, "end": 45, "distanceKm": 1.0, "slopePercent": 1, "recommendedSpeedKmh": 8.5, "label": "Bord de mer plat" },
+      { "start": 45, "end": 95, "distanceKm": 1.5, "slopePercent": 4, "recommendedSpeedKmh": 9.5, "label": "Montée des falaises" },
+      { "start": 95, "end": 140, "distanceKm": 1.0, "slopePercent": -2, "recommendedSpeedKmh": 11.0, "label": "Descente panoramique vers le port" }
+    ],
+    "checkpoints": [
+      { "time": 45, "label": "Km 1 - Cap Croisette", "distanceKm": 1.0, "message": "Bonne cadence de départ !" },
+      { "time": 95, "label": "Km 2.5 - Sommet des Falaises", "distanceKm": 2.5, "message": "Vue plongeante sur la mer !" },
+      { "time": 135, "label": "Arrivée Port de Cassis", "distanceKm": 3.5, "message": "Sprint d'arrivée réussi !" }
+    ]
+  }
+}

@@ -1,0 +1,67 @@
+{
+  "schemaVersion": "1.0",
+  "type": "game",
+  "meta": {
+    "title": "Dojo Initiation - Rythme & Cardio",
+    "difficulty": "easy",
+    "level": 1,
+    "author": "FitTV Arena Studio",
+    "createdAt": "2026-10-23T12:00:00Z"
+  },
+  "video": {
+    "source": "youtube",
+    "videoId": "XTgSxQ6ZLM0",
+    "url": "https://www.youtube.com/watch?v=XTgSxQ6ZLM0",
+    "title": "Dojo Cardio Session 60fps",
+    "durationSeconds": 90.0,
+    "effectiveDurationSeconds": 70.0,
+    "trimStart": 5.0,
+    "trimEnd": 75.0,
+    "cuts": [],
+    "keptSegments": [
+      { "start": 5.0, "end": 75.0, "duration": 70.0 }
+    ],
+    "audioMuted": false
+  },
+  "game": {
+    "rules": {
+      "maxLives": 4,
+      "maxMisses": 6,
+      "timingWindowMs": {
+        "perfect": 150,
+        "good": 350
+      },
+      "scoring": {
+        "perfect": 100,
+        "good": 50,
+        "comboMultiplierStep": 5,
+        "maxMultiplier": 3
+      },
+      "winCondition": "reach_end"
+    },
+    "actions": [
+      "STARTING COUNT",
+      "GO",
+      "JUMP",
+      "RIGHT",
+      "LEFT",
+      "SLIDE DOWN",
+      "SLASH",
+      "PUNCH",
+      "END",
+      "WIN"
+    ],
+    "timeline": [
+      { "id": "g3_0", "time": 6.0, "action": "STARTING COUNT", "showOnScreen": true, "duration": 3.0, "points": 50, "hint": "Attention au départ !" },
+      { "id": "g3_1", "time": 9.0, "action": "GO", "showOnScreen": true, "duration": 1.0, "points": 100, "hint": "En piste ! (OK)" },
+      { "id": "g3_2", "time": 16.0, "action": "JUMP", "showOnScreen": true, "duration": 1.5, "points": 100, "hint": "Petit saut d'échauffement (Haut)" },
+      { "id": "g3_3", "time": 23.0, "action": "PUNCH", "showOnScreen": true, "duration": 1.2, "points": 100, "hint": "Frappe du poing ! (F / X)" },
+      { "id": "g3_4", "time": 30.0, "action": "LEFT", "showOnScreen": true, "duration": 1.2, "points": 100, "hint": "Décalage à gauche (Gauche)" },
+      { "id": "g3_5", "time": 37.0, "action": "RIGHT", "showOnScreen": true, "duration": 1.2, "points": 100, "hint": "Décalage à droite (Droite)" },
+      { "id": "g3_6", "time": 45.0, "action": "SLASH", "showOnScreen": true, "duration": 1.2, "points": 100, "hint": "Coup de tranchant ! (D / Y)" },
+      { "id": "g3_7", "time": 53.0, "action": "SLIDE DOWN", "showOnScreen": true, "duration": 1.5, "points": 100, "hint": "Baissez-vous ! (Bas)" },
+      { "id": "g3_8", "time": 61.0, "action": "PUNCH", "showOnScreen": true, "duration": 1.2, "points": 100, "hint": "Dernière frappe !" },
+      { "id": "g3_9", "time": 68.0, "action": "WIN", "showOnScreen": true, "duration": 2.0, "points": 250, "hint": "Séance réussie !" }
+    ]
+  }
+}

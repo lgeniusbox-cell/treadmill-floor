@@ -165,13 +165,6 @@
             </button>
             <h1>Jeux d'Action Disponibles</h1>
           </div>
-          <div class="flex items-center gap-3">
-            <button id="btn-open-custom-game" class="tv-btn tv-btn-primary" data-focusable>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-              <span>+ Importer Script / Vidéo</span>
-            </button>
-            <span style="font-size:1.05rem; color:var(--text-muted);">Dossier: <span class="remote-key-tag">./games/index.json</span></span>
-          </div>
         </div>
 
         <div id="games-items-container" class="items-grid">
@@ -190,13 +183,6 @@
               <span>Retour Accueil</span>
             </button>
             <h1>Parcours Virtual Run</h1>
-          </div>
-          <div class="flex items-center gap-3">
-            <button id="btn-open-custom-run" class="tv-btn tv-btn-primary" data-focusable>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-              <span>+ Importer Script / Vidéo</span>
-            </button>
-            <span style="font-size:1.05rem; color:var(--text-muted);">Dossier: <span class="remote-key-tag">./virtual-run/index.json</span></span>
           </div>
         </div>
 
@@ -621,73 +607,6 @@
       <div class="tv-dialog-actions" style="margin-top:0.5rem;">
         <button id="btn-keyboard-cancel" class="tv-btn" data-focusable>Annuler</button>
         <button id="btn-keyboard-confirm" class="tv-btn tv-btn-primary" data-focusable>Valider le Nom</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- 5. CUSTOM SCRIPT / YOUTUBE IMPORT DIALOG -->
-  <div id="dialog-custom-script" class="tv-dialog-backdrop">
-    <div class="tv-dialog-box" style="max-width:880px;">
-      <div class="tv-dialog-title" id="custom-dialog-title">Charger un Script Personnalisé</div>
-      <div class="tv-dialog-body" style="font-size:0.95rem;">
-        <p style="color:var(--text-muted); margin-bottom:1.2rem;">
-          Importez un script JSON généré par VideoPlay Studio ou saisissez une vidéo YouTube pour créer une session interactive.
-        </p>
-
-        <!-- Mode selector: YouTube ID / Fichier JSON / JSON Brut -->
-        <div class="flex gap-2" style="margin-bottom:1.25rem;">
-          <button id="btn-tab-mode-yt" class="tv-btn tv-btn-primary tab-mode-btn" data-focusable>1. ID / Lien YouTube</button>
-          <button id="btn-tab-mode-file" class="tv-btn tab-mode-btn" data-focusable>2. Fichier JSON</button>
-          <button id="btn-tab-mode-raw" class="tv-btn tab-mode-btn" data-focusable>3. Coller JSON Brut</button>
-        </div>
-
-        <!-- TAB 1: YouTube ID / Link -->
-        <div id="tab-content-yt" class="custom-script-tab">
-          <label style="font-size:0.9rem; font-weight:700; color:var(--text-muted);">ID YouTube ou URL (watch, youtu.be, shorts)</label>
-          <div class="flex gap-2" style="margin-top:0.4rem; margin-bottom:1rem;">
-            <input type="text" id="custom-yt-input" placeholder="Ex: XTgSxQ6ZLM0 ou https://youtu.be/..." style="background:#090e1a; border:2px solid var(--border-color); color:#fff; font-size:1.1rem; padding:0.6rem 1rem; border-radius:8px; flex:1;" />
-            <button id="btn-open-yt-keyboard" class="tv-btn" data-focusable>Clavier TV</button>
-          </div>
-
-          <label style="font-size:0.9rem; font-weight:700; color:var(--text-muted);">Titre de la séance</label>
-          <input type="text" id="custom-title-input" placeholder="Ex: Ninja Rush 4K ou Session Sprint" style="background:#090e1a; border:2px solid var(--border-color); color:#fff; font-size:1.1rem; padding:0.6rem 1rem; border-radius:8px; width:100%; margin-top:0.4rem; margin-bottom:1rem;" />
-
-          <div class="flex items-center gap-3">
-            <span style="font-size:0.9rem; color:var(--text-muted);">Exemples rapides :</span>
-            <button id="btn-preset-ninja" class="tv-btn" data-focusable style="padding:0.4rem 0.8rem; font-size:0.85rem;">Ninja Parkour</button>
-            <button id="btn-preset-alps" class="tv-btn" data-focusable style="padding:0.4rem 0.8rem; font-size:0.85rem;">Sentier Alpin</button>
-          </div>
-        </div>
-
-        <!-- TAB 2: File JSON -->
-        <div id="tab-content-file" class="custom-script-tab" style="display:none;">
-          <div style="border:2px dashed var(--border-color); border-radius:12px; padding:2rem; text-align:center;">
-            <div style="font-size:2.5rem; margin-bottom:0.5rem;">📁</div>
-            <div style="font-size:1.1rem; font-weight:800; margin-bottom:0.4rem;">Sélectionnez un fichier .json sur votre appareil</div>
-            <div style="font-size:0.85rem; color:var(--text-muted); margin-bottom:1.2rem;">Fichiers compatibles exportés depuis VideoPlay Studio ou ./games/ / ./virtual-run/</div>
-            <input type="file" id="custom-file-hidden-input" accept=".json,application/json" style="display:none;" />
-            <button id="btn-trigger-file-select" class="tv-btn tv-btn-primary" data-focusable style="padding:0.8rem 2rem;">
-              <span>Parcourir les fichiers (.json)</span>
-            </button>
-            <div id="custom-file-selected-name" style="margin-top:0.8rem; color:var(--focus-ring); font-weight:700; font-size:0.95rem;"></div>
-          </div>
-        </div>
-
-        <!-- TAB 3: Raw JSON Textarea -->
-        <div id="tab-content-raw" class="custom-script-tab" style="display:none;">
-          <label style="font-size:0.9rem; font-weight:700; color:var(--text-muted);">Contenu JSON brut du script :</label>
-          <textarea id="custom-raw-json-textarea" rows="7" style="width:100%; background:#090e1a; border:2px solid var(--border-color); color:#38bdf8; font-family:var(--font-mono); font-size:0.85rem; padding:0.8rem; border-radius:8px; margin-top:0.4rem; resize:none;" placeholder='{"type": "game", "video": {"videoId": "XTgSxQ6ZLM0"}, "game": {"timeline": [...]}}'></textarea>
-        </div>
-
-        <div id="custom-script-error-msg" style="color:#ef4444; font-weight:700; font-size:0.9rem; margin-top:0.75rem; display:none;"></div>
-      </div>
-
-      <div class="tv-dialog-actions" style="margin-top:1rem;">
-        <button id="btn-custom-cancel" class="tv-btn" data-focusable>Annuler</button>
-        <button id="btn-custom-launch" class="tv-btn tv-btn-primary" data-focusable>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
-          <span>Enregistrer & Lancer</span>
-        </button>
       </div>
     </div>
   </div>

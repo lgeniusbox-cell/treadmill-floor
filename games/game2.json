@@ -1,0 +1,72 @@
+{
+  "schemaVersion": "1.0",
+  "type": "game",
+  "meta": {
+    "title": "Cyber Blade - Défi Ninja Master",
+    "difficulty": "hard",
+    "level": 3,
+    "author": "FitTV Arena Studio",
+    "createdAt": "2026-10-23T12:00:00Z"
+  },
+  "video": {
+    "source": "youtube",
+    "videoId": "XTgSxQ6ZLM0",
+    "url": "https://www.youtube.com/watch?v=XTgSxQ6ZLM0",
+    "title": "Cyber Blade Action 60fps",
+    "durationSeconds": 120.0,
+    "effectiveDurationSeconds": 105.0,
+    "trimStart": 4.0,
+    "trimEnd": 109.0,
+    "cuts": [],
+    "keptSegments": [
+      { "start": 4.0, "end": 109.0, "duration": 105.0 }
+    ],
+    "audioMuted": false
+  },
+  "game": {
+    "rules": {
+      "maxLives": 3,
+      "maxMisses": 4,
+      "timingWindowMs": {
+        "perfect": 120,
+        "good": 300
+      },
+      "scoring": {
+        "perfect": 150,
+        "good": 75,
+        "comboMultiplierStep": 4,
+        "maxMultiplier": 5
+      },
+      "winCondition": "reach_end"
+    },
+    "actions": [
+      "STARTING COUNT",
+      "GO",
+      "JUMP",
+      "RIGHT",
+      "LEFT",
+      "SLIDE DOWN",
+      "SLASH",
+      "PUNCH",
+      "END",
+      "WIN"
+    ],
+    "timeline": [
+      { "id": "g2_0", "time": 5.0, "action": "STARTING COUNT", "showOnScreen": true, "duration": 3.0, "points": 50, "hint": "Préparez-vous !" },
+      { "id": "g2_1", "time": 8.0, "action": "GO", "showOnScreen": true, "duration": 1.0, "points": 100, "hint": "GO !" },
+      { "id": "g2_2", "time": 13.0, "action": "JUMP", "showOnScreen": true, "duration": 1.2, "points": 150, "hint": "Saut d'obstacle ! (Haut / A)" },
+      { "id": "g2_3", "time": 18.0, "action": "SLASH", "showOnScreen": true, "duration": 1.0, "points": 150, "hint": "Tranchez le laser ! (D / Y)" },
+      { "id": "g2_4", "time": 24.0, "action": "LEFT", "showOnScreen": true, "duration": 1.0, "points": 150, "hint": "Esquive Gauche ! (Gauche)" },
+      { "id": "g2_5", "time": 30.0, "action": "SLIDE DOWN", "showOnScreen": true, "duration": 1.2, "points": 150, "hint": "Glissade basse ! (Bas)" },
+      { "id": "g2_6", "time": 37.0, "action": "PUNCH", "showOnScreen": true, "duration": 1.0, "points": 150, "hint": "Frappe directe ! (F / X)" },
+      { "id": "g2_7", "time": 44.0, "action": "RIGHT", "showOnScreen": true, "duration": 1.0, "points": 150, "hint": "Esquive Droite ! (Droite)" },
+      { "id": "g2_8", "time": 51.0, "action": "SLASH", "showOnScreen": true, "duration": 1.0, "points": 150, "hint": "Double Slash !" },
+      { "id": "g2_9", "time": 58.0, "action": "JUMP", "showOnScreen": true, "duration": 1.2, "points": 150, "hint": "Grand saut acrobatique !" },
+      { "id": "g2_10", "time": 66.0, "action": "SLIDE DOWN", "showOnScreen": true, "duration": 1.2, "points": 150, "hint": "Passage sous barrière !" },
+      { "id": "g2_11", "time": 74.0, "action": "PUNCH", "showOnScreen": true, "duration": 1.0, "points": 150, "hint": "Impact décisif !" },
+      { "id": "g2_12", "time": 82.0, "action": "SLASH", "showOnScreen": true, "duration": 1.0, "points": 150, "hint": "Coup de sabre final !" },
+      { "id": "g2_13", "time": 90.0, "action": "END", "showOnScreen": true, "duration": 1.0, "points": 150, "hint": "Ligne d'arrivée !" },
+      { "id": "g2_14", "time": 96.0, "action": "WIN", "showOnScreen": true, "duration": 2.0, "points": 300, "hint": "Victoire Légendaire !" }
+    ]
+  }
+}

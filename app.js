@@ -877,40 +877,18 @@
       return match ? match[1] : null;
     }
 
-    static getCustomItems(type) {
+    static getStoredExamples(type) {
       try {
         const key = type === 'game' ? 'fittv_custom_games' : 'fittv_custom_runs';
         const raw = localStorage.getItem(key);
         if (raw) {
           const list = JSON.parse(raw);
           if (Array.isArray(list)) {
-            return list.map(item => {
-              const norm = ContentLoader.normalizeItem(item.raw || item, item.id || `custom_${Date.now()}`);
-              norm.isCustom = true;
-              return norm;
-            });
+            return list.map(item => ContentLoader.normalizeItem(item.raw || item, item.id || `saved_${Date.now()}`));
           }
         }
-      } catch (e) {
-        console.warn("Failed to load custom items:", e);
-      }
+      } catch (e) {}
       return [];
-    }
-
-    static saveCustomItem(item, type) {
-      try {
-        const key = type === 'game' ? 'fittv_custom_games' : 'fittv_custom_runs';
-        const raw = localStorage.getItem(key);
-        let list = raw ? JSON.parse(raw) : [];
-        if (!Array.isArray(list)) list = [];
-        list = list.filter(i => i.id !== item.id);
-        list.unshift(item);
-        localStorage.setItem(key, JSON.stringify(list));
-        return true;
-      } catch (e) {
-        console.warn("Failed to save custom item:", e);
-        return false;
-      }
     }
 
     static normalizeItem(data, filename) {
@@ -2142,16 +2120,18 @@
     }
 
     async loadCatalogs() {
-      // 1. Games Catalog
+      // 1. Games Catalog (loads all examples from ./games/index.json + any stored examples)
       const baseGames = await ContentLoader.loadCatalog('./games/index.json');
-      const customGames = ContentLoader.getCustomItems('game');
-      this.gamesCatalog = [...customGames, ...baseGames];
+      const extraGames = ContentLoader.getStoredExamples('game');
+      const gameIds = new Set(baseGames.map(g => g.id));
+      this.gamesCatalog = [...baseGames, ...extraGames.filter(g => !gameIds.has(g.id))];
       this.renderGamesGrid();
 
-      // 2. Virtual Runs Catalog
+      // 2. Virtual Runs Catalog (loads all examples from ./virtual-run/index.json + any stored examples)
       const baseRuns = await ContentLoader.loadCatalog('./virtual-run/index.json');
-      const customRuns = ContentLoader.getCustomItems('virtual_run');
-      this.runsCatalog = [...customRuns, ...baseRuns];
+      const extraRuns = ContentLoader.getStoredExamples('virtual_run');
+      const runIds = new Set(baseRuns.map(r => r.id));
+      this.runsCatalog = [...baseRuns, ...extraRuns.filter(r => !runIds.has(r.id))];
       this.renderRunsGrid();
     }
 
@@ -2160,14 +2140,20 @@
       if (!container) return;
       container.innerHTML = '';
 
+      if (this.gamesCatalog.length === 0) {
+        container.innerHTML = `
+          <div style="grid-column: 1 / -1; text-align: center; padding: 3rem; color: var(--text-muted); font-size: 1.2rem;">
+            Aucun jeu disponible pour le moment.
+          </div>
+        `;
+        return;
+      }
+
       this.gamesCatalog.forEach(item => {
         const card = document.createElement('div');
         card.className = "catalog-card";
         card.setAttribute('data-focusable', '');
         const best = profile.profile.bestScores?.[item.id] || 0;
-        const badgeHtml = item.isCustom
-          ? `<span class="catalog-badge" style="background:rgba(56,189,248,0.25); color:var(--focus-ring);">PERSONNALISÉ</span>`
-          : `<span class="catalog-badge" style="background:rgba(236,72,153,0.2); color:#f472b6;">NIVEAU ${item.level}</span>`;
 
         card.innerHTML = `
           <div class="catalog-thumb-wrapper">
@@ -2177,7 +2163,7 @@
           <div class="catalog-info">
             <div class="catalog-title">${this.escape(item.title)}</div>
             <div class="catalog-stats-row">
-              ${badgeHtml}
+              <span class="catalog-badge" style="background:rgba(236,72,153,0.2); color:#f472b6;">NIVEAU ${item.level}</span>
               <span style="font-size:0.95rem; font-weight:700; color:var(--focus-ring);">Record: ${best} pts</span>
             </div>
           </div>
@@ -2189,20 +2175,6 @@
 
         container.appendChild(card);
       });
-
-      // Append Custom Import Card
-      const importCard = document.createElement('div');
-      importCard.className = "catalog-card catalog-card-custom";
-      importCard.setAttribute('data-focusable', '');
-      importCard.innerHTML = `
-        <div style="font-size:2.5rem; margin-bottom:0.5rem; color:var(--focus-ring);">+</div>
-        <div style="font-size:1.2rem; font-weight:800; margin-bottom:0.4rem;">+ Charger un Script Jeu</div>
-        <div style="font-size:0.85rem; color:var(--text-muted);">Importer un fichier JSON ou lien YouTube</div>
-      `;
-      importCard.addEventListener('click', () => {
-        this.openCustomScriptDialog('game');
-      });
-      container.appendChild(importCard);
     }
 
     renderRunsGrid() {
@@ -2210,15 +2182,21 @@
       if (!container) return;
       container.innerHTML = '';
 
+      if (this.runsCatalog.length === 0) {
+        container.innerHTML = `
+          <div style="grid-column: 1 / -1; text-align: center; padding: 3rem; color: var(--text-muted); font-size: 1.2rem;">
+            Aucun parcours disponible pour le moment.
+          </div>
+        `;
+        return;
+      }
+
       this.runsCatalog.forEach(item => {
         const card = document.createElement('div');
         card.className = "catalog-card";
         card.setAttribute('data-focusable', '');
         const route = item.raw?.virtualRun?.route || {};
         const dist = route.totalDistanceKm ? `${route.totalDistanceKm} km` : "Course libre";
-        const badgeHtml = item.isCustom
-          ? `<span class="catalog-badge" style="background:rgba(56,189,248,0.25); color:var(--focus-ring);">PERSONNALISÉ</span>`
-          : `<span class="catalog-badge" style="background:rgba(16,185,129,0.2); color:#34d399;">${this.escape(dist)}</span>`;
 
         card.innerHTML = `
           <div class="catalog-thumb-wrapper">
@@ -2228,7 +2206,7 @@
           <div class="catalog-info">
             <div class="catalog-title">${this.escape(item.title)}</div>
             <div class="catalog-stats-row">
-              ${badgeHtml}
+              <span class="catalog-badge" style="background:rgba(16,185,129,0.2); color:#34d399;">${this.escape(dist)}</span>
               <span style="font-size:0.95rem; color:var(--text-muted);">${this.escape(route.terrain || 'Trail')}</span>
             </div>
           </div>
@@ -2240,20 +2218,6 @@
 
         container.appendChild(card);
       });
-
-      // Append Custom Import Card
-      const importCard = document.createElement('div');
-      importCard.className = "catalog-card catalog-card-custom";
-      importCard.setAttribute('data-focusable', '');
-      importCard.innerHTML = `
-        <div style="font-size:2.5rem; margin-bottom:0.5rem; color:var(--focus-ring);">+</div>
-        <div style="font-size:1.2rem; font-weight:800; margin-bottom:0.4rem;">+ Charger un Script Run</div>
-        <div style="font-size:0.85rem; color:var(--text-muted);">Importer un fichier JSON ou lien YouTube</div>
-      `;
-      importCard.addEventListener('click', () => {
-        this.openCustomScriptDialog('virtual_run');
-      });
-      container.appendChild(importCard);
     }
 
     escape(str) {
@@ -2899,302 +2863,6 @@
       const dialog = document.getElementById('dialog-keyboard');
       dialog?.classList.remove('active');
       nav.releaseModal();
-    }
-
-    setupCustomScriptDialog() {
-      const dialog = document.getElementById('dialog-custom-script');
-      if (!dialog) return;
-
-      this.customScriptType = 'game';
-      this.customImportMode = 'yt';
-      this.parsedFileData = null;
-
-      // Mode switching tabs
-      const setMode = (mode) => {
-        this.customImportMode = mode;
-        const btnYt = document.getElementById('btn-tab-mode-yt');
-        const btnFile = document.getElementById('btn-tab-mode-file');
-        const btnRaw = document.getElementById('btn-tab-mode-raw');
-        const tabYt = document.getElementById('tab-content-yt');
-        const tabFile = document.getElementById('tab-content-file');
-        const tabRaw = document.getElementById('tab-content-raw');
-
-        btnYt?.classList.toggle('tv-btn-primary', mode === 'yt');
-        btnFile?.classList.toggle('tv-btn-primary', mode === 'file');
-        btnRaw?.classList.toggle('tv-btn-primary', mode === 'raw');
-
-        if (tabYt) tabYt.style.display = mode === 'yt' ? 'block' : 'none';
-        if (tabFile) tabFile.style.display = mode === 'file' ? 'block' : 'none';
-        if (tabRaw) tabRaw.style.display = mode === 'raw' ? 'block' : 'none';
-
-        // Clear error
-        const errEl = document.getElementById('custom-script-error-msg');
-        if (errEl) errEl.style.display = 'none';
-      };
-
-      document.getElementById('btn-tab-mode-yt')?.addEventListener('click', () => setMode('yt'));
-      document.getElementById('btn-tab-mode-file')?.addEventListener('click', () => setMode('file'));
-      document.getElementById('btn-tab-mode-raw')?.addEventListener('click', () => setMode('raw'));
-
-      // TV keyboard for YouTube ID
-      document.getElementById('btn-open-yt-keyboard')?.addEventListener('click', () => {
-        const curVal = document.getElementById('custom-yt-input')?.value || "";
-        this.openTVKeyboard({
-          title: "Saisie de l'ID ou URL YouTube",
-          initialValue: curVal,
-          maxLen: 80,
-          onConfirm: (val) => {
-            const input = document.getElementById('custom-yt-input');
-            if (input) input.value = val;
-          }
-        });
-      });
-
-      // Quick Presets
-      document.getElementById('btn-preset-ninja')?.addEventListener('click', () => {
-        const inp = document.getElementById('custom-yt-input');
-        const tit = document.getElementById('custom-title-input');
-        if (inp) inp.value = "XTgSxQ6ZLM0";
-        if (tit) tit.value = "Ninja Parkour Action";
-      });
-      document.getElementById('btn-preset-alps')?.addEventListener('click', () => {
-        const inp = document.getElementById('custom-yt-input');
-        const tit = document.getElementById('custom-title-input');
-        if (inp) inp.value = "XTgSxQ6ZLM0";
-        if (tit) tit.value = "Sentier des Crêtes Alpines";
-      });
-
-      // Local JSON file picker
-      const fileInput = document.getElementById('custom-file-hidden-input');
-      const fileTrigger = document.getElementById('btn-trigger-file-select');
-      const fileSelectedName = document.getElementById('custom-file-selected-name');
-
-      fileTrigger?.addEventListener('click', () => fileInput?.click());
-
-      fileInput?.addEventListener('change', (e) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
-
-        const reader = new FileReader();
-        reader.onload = (event) => {
-          try {
-            const data = JSON.parse(event.target.result);
-            this.parsedFileData = data;
-            if (fileSelectedName) {
-              fileSelectedName.textContent = `✓ Fichier chargé : ${file.name} (${Math.round(file.size / 1024)} Ko)`;
-            }
-          } catch (err) {
-            this.showCustomError("Erreur de parsing JSON : " + err.message);
-          }
-        };
-        reader.readAsText(file);
-      });
-
-      // Cancel button
-      document.getElementById('btn-custom-cancel')?.addEventListener('click', () => {
-        dialog.classList.remove('active');
-        nav.releaseModal();
-      });
-
-      // Launch & Save button
-      document.getElementById('btn-custom-launch')?.addEventListener('click', () => {
-        this.submitCustomScript();
-      });
-    }
-
-    openCustomScriptDialog(type = 'game') {
-      this.customScriptType = type;
-      const dialog = document.getElementById('dialog-custom-script');
-      const titleEl = document.getElementById('custom-dialog-title');
-      const errEl = document.getElementById('custom-script-error-msg');
-      if (errEl) errEl.style.display = 'none';
-
-      if (titleEl) {
-        titleEl.textContent = type === 'game'
-          ? "Charger un Script Jeu d'Action Personnalisé"
-          : "Charger un Script Virtual Run Personnalisé";
-      }
-
-      // Pre-fill raw template based on type
-      const rawTextarea = document.getElementById('custom-raw-json-textarea');
-      if (rawTextarea) {
-        if (type === 'game') {
-          rawTextarea.value = JSON.stringify({
-            schemaVersion: "1.0",
-            type: "game",
-            meta: { title: "Course Ninja Défi", difficulty: "normal", level: 2 },
-            video: {
-              videoId: "XTgSxQ6ZLM0",
-              trimStart: 5.0,
-              trimEnd: 60.0,
-              cuts: [],
-              audioMuted: false
-            },
-            game: {
-              rules: { maxLives: 3 },
-              timeline: [
-                { id: "e1", time: 6.0, action: "STARTING COUNT", showOnScreen: true, points: 50 },
-                { id: "e2", time: 9.0, action: "GO", showOnScreen: true, points: 100 },
-                { id: "e3", time: 14.0, action: "JUMP", showOnScreen: true, points: 100 },
-                { id: "e4", time: 20.0, action: "SLIDE DOWN", showOnScreen: true, points: 100 },
-                { id: "e5", time: 27.0, action: "PUNCH", showOnScreen: true, points: 100 },
-                { id: "e6", time: 34.0, action: "SLASH", showOnScreen: true, points: 100 },
-                { id: "e7", time: 42.0, action: "WIN", showOnScreen: true, points: 200 }
-              ]
-            }
-          }, null, 2);
-        } else {
-          rawTextarea.value = JSON.stringify({
-            schemaVersion: "1.0",
-            type: "virtual_run",
-            meta: { title: "Parcours Alpin Sprint", difficulty: "normal" },
-            video: {
-              videoId: "XTgSxQ6ZLM0",
-              trimStart: 5.0,
-              trimEnd: 85.0,
-              cuts: [],
-              audioMuted: false
-            },
-            virtualRun: {
-              route: { name: "Sentier Découverte", totalDistanceKm: 2.0 },
-              speedMapping: { referenceSpeedKmh: 8.0, minSpeedKmh: 3.0, maxSpeedKmh: 18.0 },
-              checkpoints: [
-                { time: 25, label: "Point de vue 1", distanceKm: 0.8 },
-                { time: 55, label: "Ligne d'arrivée", distanceKm: 2.0 }
-              ]
-            }
-          }, null, 2);
-        }
-      }
-
-      dialog?.classList.add('active');
-      nav.trapInModal(dialog);
-    }
-
-    showCustomError(msg) {
-      const errEl = document.getElementById('custom-script-error-msg');
-      if (errEl) {
-        errEl.textContent = msg;
-        errEl.style.display = 'block';
-      }
-      sound.play('fail');
-    }
-
-    submitCustomScript() {
-      let finalData = null;
-      const type = this.customScriptType || 'game';
-
-      if (this.customImportMode === 'yt') {
-        const inp = document.getElementById('custom-yt-input')?.value || "";
-        const titleInp = document.getElementById('custom-title-input')?.value || "";
-        const ytId = ContentLoader.extractYouTubeId(inp);
-
-        if (!ytId) {
-          this.showCustomError("Veuillez saisir un lien ou un identifiant YouTube valide (11 caractères).");
-          return;
-        }
-
-        const title = titleInp.trim() || (type === 'game' ? `Jeu Personnalisé (${ytId})` : `Course Virtuelle (${ytId})`);
-
-        if (type === 'game') {
-          finalData = {
-            schemaVersion: "1.0",
-            type: "game",
-            meta: { title, difficulty: "normal", level: 2 },
-            video: {
-              videoId: ytId,
-              title,
-              durationSeconds: 90,
-              effectiveDurationSeconds: 80,
-              trimStart: 3,
-              trimEnd: 83,
-              cuts: [],
-              audioMuted: false
-            },
-            game: {
-              rules: { maxLives: 3, maxMisses: 5 },
-              actions: ["STARTING COUNT", "GO", "JUMP", "RIGHT", "LEFT", "SLIDE DOWN", "SLASH", "PUNCH", "END", "WIN"],
-              timeline: [
-                { id: "c_1", time: 5.0, action: "STARTING COUNT", showOnScreen: true, points: 50, hint: "3.. 2.. 1.. Partez !" },
-                { id: "c_2", time: 8.0, action: "GO", showOnScreen: true, points: 100, hint: "C'est parti ! (OK)" },
-                { id: "c_3", time: 13.0, action: "JUMP", showOnScreen: true, points: 100, hint: "Sautez ! (Haut / A)" },
-                { id: "c_4", time: 18.0, action: "LEFT", showOnScreen: true, points: 100, hint: "À gauche ! (Gauche)" },
-                { id: "c_5", time: 24.0, action: "SLIDE DOWN", showOnScreen: true, points: 100, hint: "Glissez ! (Bas)" },
-                { id: "c_6", time: 30.0, action: "PUNCH", showOnScreen: true, points: 100, hint: "Frappez ! (F / X)" },
-                { id: "c_7", time: 37.0, action: "SLASH", showOnScreen: true, points: 100, hint: "Tranchez ! (D / Y)" },
-                { id: "c_8", time: 45.0, action: "RIGHT", showOnScreen: true, points: 100, hint: "À droite ! (Droite)" },
-                { id: "c_9", time: 53.0, action: "JUMP", showOnScreen: true, points: 100, hint: "Grand Saut ! (Haut)" },
-                { id: "c_10", time: 62.0, action: "PUNCH", showOnScreen: true, points: 100, hint: "Coup de poing final !" },
-                { id: "c_11", time: 70.0, action: "END", showOnScreen: true, points: 100, hint: "Ligne d'arrivée !" },
-                { id: "c_12", time: 75.0, action: "WIN", showOnScreen: true, points: 200, hint: "Victoire !" }
-              ]
-            }
-          };
-        } else {
-          finalData = {
-            schemaVersion: "1.0",
-            type: "virtual_run",
-            meta: { title, difficulty: "normal" },
-            video: {
-              videoId: ytId,
-              title,
-              durationSeconds: 120,
-              effectiveDurationSeconds: 110,
-              trimStart: 5,
-              trimEnd: 115,
-              cuts: [],
-              audioMuted: false
-            },
-            virtualRun: {
-              route: { name: title, location: "Parcours Utilisateur", totalDistanceKm: 2.5, terrain: "Route" },
-              speedMapping: { referenceSpeedKmh: 8.0, minSpeedKmh: 3.0, maxSpeedKmh: 18.0, videoPlaybackRateMin: 0.25, videoPlaybackRateMax: 2.0 },
-              checkpoints: [
-                { time: 30, label: "Checkpoint 1", distanceKm: 0.8, message: "Super départ !" },
-                { time: 65, label: "Mi-parcours", distanceKm: 1.5, message: "Gardez le rythme !" },
-                { time: 100, label: "Sprint final", distanceKm: 2.5, message: "Accélérez pour le chrono !" }
-              ]
-            }
-          };
-        }
-      } else if (this.customImportMode === 'file') {
-        if (!this.parsedFileData) {
-          this.showCustomError("Veuillez sélectionner un fichier .json valide.");
-          return;
-        }
-        finalData = this.parsedFileData;
-      } else if (this.customImportMode === 'raw') {
-        const rawText = document.getElementById('custom-raw-json-textarea')?.value || "";
-        try {
-          finalData = JSON.parse(rawText);
-        } catch (e) {
-          this.showCustomError("Erreur de syntaxe JSON : " + e.message);
-          return;
-        }
-      }
-
-      if (!finalData) {
-        this.showCustomError("Données de script invalides.");
-        return;
-      }
-
-      // Normalize & Save
-      const filename = `custom_${Date.now()}`;
-      const item = ContentLoader.normalizeItem(finalData, filename);
-      item.isCustom = true;
-
-      ContentLoader.saveCustomItem(item, type);
-
-      const dialog = document.getElementById('dialog-custom-script');
-      dialog?.classList.remove('active');
-      nav.releaseModal();
-
-      this.showToast(`Script "${item.title}" importé et enregistré !`);
-
-      // Reload and launch activity immediately!
-      this.loadCatalogs();
-      setTimeout(() => {
-        this.startActivity(item, type);
-      }, 350);
     }
   }
 

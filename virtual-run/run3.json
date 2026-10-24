@@ -1,0 +1,52 @@
+{
+  "schemaVersion": "1.0",
+  "type": "virtual_run",
+  "meta": {
+    "title": "Parc des Séquoias Géants 4K",
+    "difficulty": "hard",
+    "author": "FitTV Arena Studio",
+    "createdAt": "2026-10-23T12:00:00Z"
+  },
+  "video": {
+    "source": "youtube",
+    "videoId": "XTgSxQ6ZLM0",
+    "url": "https://www.youtube.com/watch?v=XTgSxQ6ZLM0",
+    "title": "Parc des Séquoias Géants 4K Trail",
+    "durationSeconds": 180.0,
+    "effectiveDurationSeconds": 160.0,
+    "trimStart": 6.0,
+    "trimEnd": 166.0,
+    "cuts": [],
+    "keptSegments": [
+      { "start": 6.0, "end": 166.0, "duration": 160.0 }
+    ],
+    "audioMuted": false
+  },
+  "virtualRun": {
+    "route": {
+      "name": "Forêt des Géants Millénaires",
+      "location": "Sierra Nevada, Californie",
+      "totalDistanceKm": 4.2,
+      "elevationGainM": 180,
+      "terrain": "forêt"
+    },
+    "defaultPaceMinPerKm": 5.0,
+    "speedMapping": {
+      "referenceSpeedKmh": 9.5,
+      "minSpeedKmh": 3.0,
+      "maxSpeedKmh": 20.0,
+      "videoPlaybackRateMin": 0.25,
+      "videoPlaybackRateMax": 2.0
+    },
+    "segments": [
+      { "start": 6, "end": 50, "distanceKm": 1.2, "slopePercent": 2, "recommendedSpeedKmh": 9.0, "label": "Sentier boisé d'échauffement" },
+      { "start": 50, "end": 110, "distanceKm": 1.8, "slopePercent": 7, "recommendedSpeedKmh": 8.5, "label": "Côte des Trois Sentinelles" },
+      { "start": 110, "end": 166, "distanceKm": 1.2, "slopePercent": -1, "recommendedSpeedKmh": 11.5, "label": "Ligne droite vers le Général Sherman" }
+    ],
+    "checkpoints": [
+      { "time": 50, "label": "Km 1.2 - Entrée de la futaie", "distanceKm": 1.2, "message": "Super rythme, continuez !" },
+      { "time": 110, "label": "Km 3.0 - Belvédère des Séquoias", "distanceKm": 3.0, "message": "Arbres géants en vue !" },
+      { "time": 160, "label": "Arrivée Séquoia Millénaire", "distanceKm": 4.2, "message": "Parcours complet validé !" }
+    ]
+  }
+}

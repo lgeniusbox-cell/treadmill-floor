@@ -57,6 +57,15 @@
     ],
     "timeline": [
       {
+        "id": "evt_1792869393172_es9k",
+        "time": 0,
+        "action": "STARTING COUNT",
+        "showOnScreen": true,
+        "duration": 3,
+        "points": 50,
+        "hint": "STARTING COUNT"
+      },
+      {
         "id": "evt_1792868427086_bbis",
         "time": 13.94,
         "action": "JUMP",

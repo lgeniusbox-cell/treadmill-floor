@@ -1,0 +1,67 @@
+{
+  "schemaVersion": "1.0",
+  "type": "game",
+  "video": {
+    "source": "youtube",
+    "videoId": "4Fj0Qe7BY7k",
+    "url": "https://www.youtube.com/watch?v=4Fj0Qe7BY7k",
+    "title": "Vidéo 4Fj0Qe7BY7k",
+    "durationSeconds": 479,
+    "effectiveDurationSeconds": 60,
+    "trimStart": 0,
+    "trimEnd": 60,
+    "cuts": [],
+    "keptSegments": [
+      {
+        "start": 0,
+        "end": 60,
+        "duration": 60
+      }
+    ],
+    "audioMuted": false
+  },
+  "meta": {
+    "createdAt": "2026-10-24T18:30:04.627Z",
+    "author": "VideoPlay Studio User",
+    "difficulty": "normal"
+  },
+  "game": {
+    "schemaVersion": "1.0",
+    "type": "game",
+    "timeline": [
+      {
+        "id": "evt_1792866604622_90ip",
+        "time": 11.33,
+        "action": "STARTING COUNT",
+        "showOnScreen": true,
+        "duration": 0.6,
+        "window": {
+          "before": 0.28,
+          "after": 0.28
+        },
+        "points": 100,
+        "hint": "STARTING COUNT",
+        "visualCue": "starting_count",
+        "required": true
+      }
+    ],
+    "rules": {
+      "maxMisses": 5,
+      "maxLives": 3,
+      "timingWindowMs": {
+        "perfect": 120,
+        "good": 280
+      },
+      "scoring": {
+        "perfect": 100,
+        "good": 50,
+        "comboMultiplierStep": 5,
+        "maxMultiplier": 4,
+        "failPenalty": 0
+      },
+      "winCondition": "reach_end",
+      "minScoreToWin": 500,
+      "loseCondition": "misses>=maxMisses"
+    }
+  }
+}

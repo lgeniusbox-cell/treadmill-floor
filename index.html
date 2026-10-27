@@ -1,3 +1,4 @@
+
 <!doctype html>
 <html lang="en">
 <head>
@@ -5,25 +6,43 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Main-Page Media Stream Probe</title>
 <style>
-:root{color-scheme:dark}*{box-sizing:border-box}body{margin:0 auto;padding:22px 16px;max-width:1150px;font:14px/1.5 system-ui,sans-serif;background:#111827;color:#e5e7eb}h1{font-size:1.5rem;margin:0 0 6px}h2{font-size:1.05rem;margin-top:22px}.muted{color:#aab4c4}.controls{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0;align-items:center}input,button{font:inherit;color:#f9fafb;background:#1f2937;border:1px solid #4b5563;border-radius:6px;padding:10px}input[type=text]{flex:1;min-width:230px}button{cursor:pointer}button:hover{background:#374151}label{display:inline-flex;align-items:center;gap:7px}.status{padding:10px;background:#030712;border:1px solid #374151;border-radius:7px;margin:12px 0}.note{background:#1f2937;border:1px solid #374151;border-radius:8px;padding:12px}.good{color:#86efac}#player{aspect-ratio:16/9;width:100%;background:#000;border:1px solid #374151}iframe{width:100%;height:100%;border:0}#log{white-space:pre-wrap;overflow-wrap:anywhere;height:430px;overflow:auto;background:#030712;border:1px solid #374151;border-radius:8px;padding:12px;font:12px/1.5 ui-monospace,Consolas,monospace}textarea{width:100%;min-height:230px;box-sizing:border-box;font:12px/1.5 ui-monospace,Consolas,monospace;background:#030712;color:#e5e7eb;border:1px solid #4b5563;border-radius:8px;padding:12px}.small{font-size:12px}
+:root{color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0 auto;padding:22px 16px;max-width:1150px;font:14px/1.5 system-ui,sans-serif;background:#111827;color:#e5e7eb}
+h1{font-size:1.5rem;margin:0 0 6px}
+h2{font-size:1.05rem;margin-top:22px}
+.muted{color:#aab4c4}
+.controls{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0;align-items:center}
+input,button{font:inherit;color:#f9fafb;background:#1f2937;border:1px solid #4b5563;border-radius:6px;padding:10px}
+input[type=text]{flex:1;min-width:230px}
+button{cursor:pointer}
+button:hover{background:#374151}
+label{display:inline-flex;align-items:center;gap:7px}
+.status{padding:10px;background:#030712;border:1px solid #374151;border-radius:7px;margin:12px 0}
+.note{background:#1f2937;border:1px solid #374151;border-radius:8px;padding:12px}
+#player{aspect-ratio:16/9;width:100%;background:#000;border:1px solid #374151}
+iframe{width:100%;height:100%;border:0}
+#log{white-space:pre-wrap;overflow-wrap:anywhere;height:430px;overflow:auto;background:#030712;border:1px solid #374151;border-radius:8px;padding:12px;font:12px/1.5 ui-monospace,Consolas,monospace}
+.small{font-size:12px}
 </style>
 </head>
 <body>
 <h1>Main-Page Media Stream Probe</h1>
-<p class="muted">This test instruments only this page's JavaScript realm. It does not inject into or patch the YouTube iframe.</p>
+<p class="muted">This test monitors only the main page's JavaScript realm. It does not inject JavaScript into the YouTube iframe.</p>
 
 <div class="note">
 <strong>Test goal</strong>
-<p>Determine whether media-stream reads, response-body consumption, MSE appends, or media-element operations occur in the main page realm. If the logs remain empty for these APIs while YouTube plays inside its iframe, that is evidence these operations are not exposed through the main page's JavaScript prototypes—not proof that no media stream exists.</p>
+<p>Check whether media stream reads, Response body consumption, MediaSource appends, or media-element operations occur in the main page. If the log remains empty for these APIs during playback, these operations may be isolated inside the iframe. This does not prove that no media stream exists.</p>
 </div>
 
 <div class="controls">
-  <input id="url" type="text" placeholder="YouTube URL (watch, youtu.be, shorts, live, embed)">
+  <input id="url" type="text" value="https://www.youtube.com/embed/4Fj0Qe7BY7k" placeholder="YouTube URL: watch, youtu.be, shorts, live, embed">
   <button id="load">Load video</button>
   <button id="export">Export JSON</button>
   <button id="clear">Clear log</button>
 </div>
-<div class="status" id="status">Installing main-page hooks…</div>
+
+<div class="status" id="status">Installing main-page hooks...</div>
 <div id="player"></div>
 
 <h2>Main-page instrumentation log</h2>
@@ -36,192 +55,705 @@
 <script>
 (() => {
 "use strict";
+
 const $ = id => document.getElementById(id);
 const records = [];
 const MAX_RECORDS = 10000;
 const MAX_LINES = 1800;
-const seenStreams = new WeakSet();
 const seenReaders = new WeakSet();
 const seenMedia = new WeakSet();
 
 function ranges(r) {
-  const a=[];
-  try { for(let i=0;i<r.length;i++) a.push({start:+r.start(i).toFixed(3),end:+r.end(i).toFixed(3)}); } catch(_) {}
+  const a = [];
+  try {
+    for (let i = 0; i < r.length; i++) {
+      a.push({
+        start: +r.start(i).toFixed(3),
+        end: +r.end(i).toFixed(3)
+      });
+    }
+  } catch (_) {}
   return a;
 }
+
 function chunkInfo(x) {
-  if(x==null) return {kind:String(x),bytes:null};
-  if(x instanceof ArrayBuffer) return {kind:"ArrayBuffer",bytes:x.byteLength};
-  if(ArrayBuffer.isView(x)) return {kind:x.constructor?.name||"ArrayBufferView",bytes:x.byteLength,byteOffset:x.byteOffset};
-  if(typeof Blob!=="undefined"&&x instanceof Blob) return {kind:"Blob",bytes:x.size,mime:x.type};
-  return {kind:x.constructor?.name||typeof x,bytes:x.byteLength??null};
+  if (x == null) return {kind: String(x), bytes: null};
+
+  if (x instanceof ArrayBuffer)
+    return {kind: "ArrayBuffer", bytes: x.byteLength};
+
+  if (ArrayBuffer.isView(x))
+    return {
+      kind: x.constructor?.name || "ArrayBufferView",
+      bytes: x.byteLength,
+      byteOffset: x.byteOffset
+    };
+
+  if (typeof Blob !== "undefined" && x instanceof Blob)
+    return {kind: "Blob", bytes: x.size, mime: x.type};
+
+  return {
+    kind: x.constructor?.name || typeof x,
+    bytes: x.byteLength ?? null
+  };
 }
-function emit(type, details={}, stack) {
-  const e={time:new Date().toISOString(),perfMs:+performance.now().toFixed(3),realm:"MAIN_PAGE",page:location.href,type,...details};
-  if($("stacks").checked&&stack)e.stack=stack;
-  records.push(e); if(records.length>MAX_RECORDS)records.shift();
-  console.log("[MAIN-MEDIA-PROBE]",e);
-  $("log").textContent += ($("compact").checked?JSON.stringify(e):JSON.stringify(e,null,2))+"\n";
-  const lines=$("log").textContent.split("\n");
-  if(lines.length>MAX_LINES)$("log").textContent=lines.slice(-MAX_LINES+1).join("\n");
-  $("log").scrollTop=$("log").scrollHeight;
+
+function stack() {
+  return new Error("API caller").stack;
 }
-function stack(){return new Error("API caller").stack;}
-function patchMethod(proto,name,before,after) {
-  if(!proto)return false;
-  const d=Object.getOwnPropertyDescriptor(proto,name);
-  if(!d||typeof d.value!=="function")return false;
-  const original=d.value;
+
+function emit(type, details = {}, callStack) {
+  const e = {
+    time: new Date().toISOString(),
+    perfMs: +performance.now().toFixed(3),
+    realm: "MAIN_PAGE",
+    page: location.href,
+    type,
+    ...details
+  };
+
+  if ($("stacks").checked && callStack) e.stack = callStack;
+
+  records.push(e);
+  if (records.length > MAX_RECORDS) records.shift();
+
+  console.log("[MAIN-MEDIA-PROBE]", e);
+
+  const line = $("compact").checked
+    ? JSON.stringify(e)
+    : JSON.stringify(e, null, 2);
+
+  $("log").textContent += line + "\n";
+
+  const lines = $("log").textContent.split("\n");
+  if (lines.length > MAX_LINES)
+    $("log").textContent = lines.slice(-MAX_LINES + 1).join("\n");
+
+  $("log").scrollTop = $("log").scrollHeight;
+}
+
+function patchMethod(proto, name, before, after) {
+  if (!proto) return false;
+
+  const d = Object.getOwnPropertyDescriptor(proto, name);
+  if (!d || typeof d.value !== "function") return false;
+
+  const original = d.value;
+
   try {
-    Object.defineProperty(proto,name,{...d,value:function(...args){
-      let meta;
-      try{if(before)meta=before.call(this,args);}catch(e){emit("HOOK_ERROR",{method:name,error:String(e)});}
-      let result;
-      try{result=original.apply(this,args);}catch(e){emit("API_THROW",{method:name,meta,error:String(e)},stack());throw e;}
-      try{if(after)after.call(this,args,result,meta);}catch(e){emit("HOOK_ERROR",{method:name,error:String(e)});}
-      return result;
-    }});
-    emit("HOOK_INSTALLED",{target:proto.constructor?.name||"prototype",method:name});
-    return true;
-  } catch(e) { emit("HOOK_FAILED",{method:name,error:String(e)});return false; }
-}
-function observeReader(reader,sourceLabel) {
-  if(!reader||seenReaders.has(reader))return;
-  seenReaders.add(reader);
-  emit("STREAM_READER_CREATED",{sourceLabel,readerType:reader.constructor?.name||"unknown"},stack());
-}
-function observeMedia(el) {
-  if(!el||seenMedia.has(el))return;
-  seenMedia.add(el);
-  const snap=()=>({tag:el.tagName,id:el.id||null,className:typeof el.className==="string"?el.className:null,
-    src:el.currentSrc||el.src||"",srcObjectType:el.srcObject?.constructor?.name||null,
-    currentTime:Number.isFinite(el.currentTime)?+el.currentTime.toFixed(3):null,readyState:el.readyState,networkState:el.networkState,
-    paused:el.paused,playbackRate:el.playbackRate,videoWidth:el.videoWidth||0,videoHeight:el.videoHeight||0,
-    buffered:ranges(el.buffered),seekable:ranges(el.seekable)});
-  emit("MEDIA_ELEMENT_FOUND",snap(),stack());
-  for(const ev of ["loadstart","loadedmetadata","loadeddata","canplay","canplaythrough","play","playing","pause","waiting","stalled","suspend","progress","seeking","seeked","timeupdate","ended","error","emptied"])
-    el.addEventListener(ev,()=>emit("MEDIA_EVENT_"+ev.toUpperCase(),snap()));
-}
-function installHooks(){
-  let installed=0;
-  if(window.ReadableStream){
-    installed+=patchMethod(ReadableStream.prototype,"getReader",function(args){
-      const m={streamType:this.constructor?.name||"ReadableStream",locked:this.locked,options:args[0]??null};
-      emit("STREAM_GET_READER_REQUEST",m,stack());return m;
-    },function(args,reader,m){observeReader(reader,m.streamType);emit("STREAM_GET_READER_RETURN",{streamType:m.streamType,readerType:reader?.constructor?.name});})?1:0;
-    installed+=patchMethod(ReadableStream.prototype,"tee",function(){const m={streamType:this.constructor?.name||"ReadableStream",locked:this.locked};emit("STREAM_TEE_CALL",m,stack());return m;})?1:0;
-    installed+=patchMethod(ReadableStream.prototype,"pipeTo",function(args){const m={destinationType:args[0]?.constructor?.name||null};emit("STREAM_PIPE_TO_CALL",m,stack());return m;})?1:0;
-    installed+=patchMethod(ReadableStream.prototype,"pipeThrough",function(args){const m={transformType:args[0]?.constructor?.name||null};emit("STREAM_PIPE_THROUGH_CALL",m,stack());return m;})?1:0;
-  }
-  if(window.ReadableStreamDefaultReader){
-    installed+=patchMethod(ReadableStreamDefaultReader.prototype,"read",function(){
-      const m={readerType:this.constructor?.name||"ReadableStreamDefaultReader"};
-      emit("STREAM_READ_REQUEST",m,stack());return m;
-    },function(args,promise,m){
-      if(promise&&typeof promise.then==="function")promise.then(result=>{
-        emit("STREAM_READ_RESULT",{...m,done:result.done,chunk:chunkInfo(result.value)});
-      },err=>emit("STREAM_READ_REJECTED",{...m,error:String(err)}));
-    })?1:0;
-    installed+=patchMethod(ReadableStreamDefaultReader.prototype,"cancel",function(args){const m={reason:args[0]===undefined?null:String(args[0])};emit("STREAM_READER_CANCEL",m,stack());return m;})?1:0;
-  }
-  if(window.ReadableStreamBYOBReader){
-    installed+=patchMethod(ReadableStreamBYOBReader.prototype,"read",function(args){const m={view:chunkInfo(args[0])};emit("BYOB_READ_REQUEST",m,stack());return m;},function(args,promise,m){
-      if(promise&&typeof promise.then==="function")promise.then(r=>emit("BYOB_READ_RESULT",{...m,done:r.done,chunk:chunkInfo(r.value)}),e=>emit("BYOB_READ_REJECTED",{error:String(e)}));
-    })?1:0;
-  }
-  if(window.Response){
-    installed+=patchMethod(Response.prototype,"arrayBuffer",function(){const m={url:this.url,status:this.status};emit("RESPONSE_ARRAYBUFFER_CALL",m,stack());return m;},function(args,p,m){
-      if(p&&typeof p.then==="function")p.then(b=>emit("RESPONSE_ARRAYBUFFER_RESULT",{...m,bytes:b.byteLength}),e=>emit("RESPONSE_ARRAYBUFFER_ERROR",{...m,error:String(e)}));
-    })?1:0;
-    installed+=patchMethod(Response.prototype,"blob",function(){const m={url:this.url,status:this.status};emit("RESPONSE_BLOB_CALL",m,stack());return m;},function(args,p,m){
-      if(p&&typeof p.then==="function")p.then(b=>emit("RESPONSE_BLOB_RESULT",{...m,bytes:b.size,mime:b.type}),e=>emit("RESPONSE_BLOB_ERROR",{...m,error:String(e)}));
-    })?1:0;
-    installed+=patchMethod(Response.prototype,"clone",function(){const m={url:this.url,status:this.status};emit("RESPONSE_CLONE_CALL",m,stack());return m;})?1:0;
-    try {
-      const d=Object.getOwnPropertyDescriptor(Response.prototype,"body");
-      if(d?.get&&d.configurable){
-        Object.defineProperty(Response.prototype,"body",{...d,get:function(){
-          emit("RESPONSE_BODY_GET",{url:this.url,status:this.status,bodyUsed:this.bodyUsed},stack());
-          return d.get.call(this);
-        }});
-        emit("HOOK_INSTALLED",{target:"Response.prototype",method:"body getter"});installed++;
-      }
-    }catch(e){emit("HOOK_FAILED",{method:"Response.body",error:String(e)});}
-  }
-  if(window.MediaSource){
-    installed+=patchMethod(MediaSource.prototype,"addSourceBuffer",function(args){
-      const m={mimeType:args[0],mediaSourceState:this.readyState};
-      emit("MSE_ADD_SOURCEBUFFER_REQUEST",m,stack());return m;
-    },function(args,sb,m){
-      emit("MSE_SOURCEBUFFER_CREATED",{...m,bufferType:sb?.constructor?.name},stack());
-      if(sb&&!sb.__mainProbeEvents){
-        try{Object.defineProperty(sb,"__mainProbeEvents",{value:true});}catch(_){}
-        for(const ev of ["updatestart","update","updateend","error","abort"])
-          sb.addEventListener(ev,()=>emit("MSE_SOURCEBUFFER_"+ev.toUpperCase(),{mimeType:m.mimeType,updating:sb.updating,buffered:ranges(sb.buffered)}));
-      }
-    })?1:0;
-    installed+=patchMethod(MediaSource.prototype,"endOfStream",function(args){const m={error:args[0]??null,state:this.readyState};emit("MSE_END_OF_STREAM_CALL",m,stack());return m;})?1:0;
-    installed+=patchMethod(MediaSource.prototype,"removeSourceBuffer",function(){const m={};emit("MSE_REMOVE_SOURCEBUFFER_CALL",m,stack());return m;})?1:0;
-  }
-  if(window.SourceBuffer){
-    installed+=patchMethod(SourceBuffer.prototype,"appendBuffer",function(args){
-      const m={chunk:chunkInfo(args[0]),updating:this.updating,bufferedBefore:ranges(this.buffered)};
-      emit("MSE_APPEND_BUFFER_CALL",m,stack());return m;
-    })?1:0;
-    installed+=patchMethod(SourceBuffer.prototype,"remove",function(args){const m={start:args[0],end:args[1],bufferedBefore:ranges(this.buffered)};emit("MSE_REMOVE_CALL",m,stack());return m;})?1:0;
-    installed+=patchMethod(SourceBuffer.prototype,"abort",function(){const m={updating:this.updating};emit("MSE_ABORT_CALL",m,stack());return m;})?1:0;
-  }
-  if(window.HTMLMediaElement){
-    for(const method of ["play","pause","load"]){
-      installed+=patchMethod(HTMLMediaElement.prototype,method,function(){
-        const m={tag:this.tagName,src:this.currentSrc||this.src||"",currentTime:this.currentTime,readyState:this.readyState,buffered:ranges(this.buffered)};
-        emit("MEDIA_"+method.toUpperCase()+"_CALL",m,stack());return m;
-      })?1:0;
-    }
-    for(const prop of ["src","srcObject"]){
-      try{
-        const d=Object.getOwnPropertyDescriptor(HTMLMediaElement.prototype,prop);
-        if(d?.set&&d.configurable){
-          Object.defineProperty(HTMLMediaElement.prototype,prop,{...d,set:function(v){
-            emit("MEDIA_"+prop.toUpperCase()+"_SET",{tag:this.tagName,value:prop==="src"?String(v):v?.constructor?.name||null},stack());
-            return d.set.call(this,v);
-          }});
-          installed++;
+    Object.defineProperty(proto, name, {
+      ...d,
+      value: function(...args) {
+        let meta;
+
+        try {
+          if (before) meta = before.call(this, args);
+        } catch (e) {
+          emit("HOOK_ERROR", {method: name, error: String(e)});
         }
-      }catch(e){emit("HOOK_FAILED",{method:"HTMLMediaElement."+prop,error:String(e)});}
+
+        let result;
+
+        try {
+          result = original.apply(this, args);
+        } catch (e) {
+          emit("API_THROW", {
+            method: name,
+            meta,
+            error: String(e)
+          }, stack());
+          throw e;
+        }
+
+        try {
+          if (after) after.call(this, args, result, meta);
+        } catch (e) {
+          emit("HOOK_ERROR", {method: name, error: String(e)});
+        }
+
+        return result;
+      }
+    });
+
+    emit("HOOK_INSTALLED", {
+      target: proto.constructor?.name || "prototype",
+      method: name
+    });
+
+    return true;
+  } catch (e) {
+    emit("HOOK_FAILED", {method: name, error: String(e)});
+    return false;
+  }
+}
+
+function observeReader(reader, sourceLabel) {
+  if (!reader || seenReaders.has(reader)) return;
+
+  seenReaders.add(reader);
+
+  emit("STREAM_READER_CREATED", {
+    sourceLabel,
+    readerType: reader.constructor?.name || "unknown"
+  }, stack());
+}
+
+function observeMedia(el) {
+  if (!el || seenMedia.has(el)) return;
+
+  seenMedia.add(el);
+
+  const snap = () => ({
+    tag: el.tagName,
+    id: el.id || null,
+    className: typeof el.className === "string" ? el.className : null,
+    src: el.currentSrc || el.src || "",
+    srcObjectType: el.srcObject?.constructor?.name || null,
+    currentTime: Number.isFinite(el.currentTime)
+      ? +el.currentTime.toFixed(3) : null,
+    readyState: el.readyState,
+    networkState: el.networkState,
+    paused: el.paused,
+    playbackRate: el.playbackRate,
+    videoWidth: el.videoWidth || 0,
+    videoHeight: el.videoHeight || 0,
+    buffered: ranges(el.buffered),
+    seekable: ranges(el.seekable)
+  });
+
+  emit("MEDIA_ELEMENT_FOUND", snap(), stack());
+
+  const events = [
+    "loadstart", "loadedmetadata", "loadeddata", "canplay",
+    "canplaythrough", "play", "playing", "pause", "waiting",
+    "stalled", "suspend", "progress", "seeking", "seeked",
+    "timeupdate", "ended", "error", "emptied"
+  ];
+
+  for (const ev of events) {
+    el.addEventListener(ev, () => {
+      emit("MEDIA_EVENT_" + ev.toUpperCase(), snap());
+    });
+  }
+}
+
+function installHooks() {
+  let installed = 0;
+
+  if (window.ReadableStream) {
+    installed += patchMethod(
+      ReadableStream.prototype,
+      "getReader",
+      function(args) {
+        const m = {
+          streamType: this.constructor?.name || "ReadableStream",
+          locked: this.locked,
+          options: args[0] ?? null
+        };
+
+        emit("STREAM_GET_READER_REQUEST", m, stack());
+        return m;
+      },
+      function(args, reader, m) {
+        observeReader(reader, m.streamType);
+
+        emit("STREAM_GET_READER_RETURN", {
+          streamType: m.streamType,
+          readerType: reader?.constructor?.name
+        });
+      }
+    ) ? 1 : 0;
+
+    installed += patchMethod(
+      ReadableStream.prototype,
+      "tee",
+      function() {
+        const m = {
+          streamType: this.constructor?.name || "ReadableStream",
+          locked: this.locked
+        };
+
+        emit("STREAM_TEE_CALL", m, stack());
+        return m;
+      }
+    ) ? 1 : 0;
+
+    installed += patchMethod(
+      ReadableStream.prototype,
+      "pipeTo",
+      function(args) {
+        const m = {
+          destinationType: args[0]?.constructor?.name || null
+        };
+
+        emit("STREAM_PIPE_TO_CALL", m, stack());
+        return m;
+      }
+    ) ? 1 : 0;
+
+    installed += patchMethod(
+      ReadableStream.prototype,
+      "pipeThrough",
+      function(args) {
+        const m = {
+          transformType: args[0]?.constructor?.name || null
+        };
+
+        emit("STREAM_PIPE_THROUGH_CALL", m, stack());
+        return m;
+      }
+    ) ? 1 : 0;
+  }
+
+  if (window.ReadableStreamDefaultReader) {
+    installed += patchMethod(
+      ReadableStreamDefaultReader.prototype,
+      "read",
+      function() {
+        const m = {
+          readerType: this.constructor?.name || "ReadableStreamDefaultReader"
+        };
+
+        emit("STREAM_READ_REQUEST", m, stack());
+        return m;
+      },
+      function(args, promise, m) {
+        if (promise && typeof promise.then === "function") {
+          promise.then(
+            result => emit("STREAM_READ_RESULT", {
+              ...m,
+              done: result.done,
+              chunk: chunkInfo(result.value)
+            }),
+            err => emit("STREAM_READ_REJECTED", {
+              ...m,
+              error: String(err)
+            })
+          );
+        }
+      }
+    ) ? 1 : 0;
+
+    installed += patchMethod(
+      ReadableStreamDefaultReader.prototype,
+      "cancel",
+      function(args) {
+        const m = {
+          reason: args[0] === undefined ? null : String(args[0])
+        };
+
+        emit("STREAM_READER_CANCEL", m, stack());
+        return m;
+      }
+    ) ? 1 : 0;
+  }
+
+  if (window.ReadableStreamBYOBReader) {
+    installed += patchMethod(
+      ReadableStreamBYOBReader.prototype,
+      "read",
+      function(args) {
+        const m = {view: chunkInfo(args[0])};
+
+        emit("BYOB_READ_REQUEST", m, stack());
+        return m;
+      },
+      function(args, promise, m) {
+        if (promise && typeof promise.then === "function") {
+          promise.then(
+            r => emit("BYOB_READ_RESULT", {
+              ...m,
+              done: r.done,
+              chunk: chunkInfo(r.value)
+            }),
+            e => emit("BYOB_READ_REJECTED", {error: String(e)})
+          );
+        }
+      }
+    ) ? 1 : 0;
+  }
+
+  if (window.Response) {
+    installed += patchMethod(
+      Response.prototype,
+      "arrayBuffer",
+      function() {
+        const m = {url: this.url, status: this.status};
+        emit("RESPONSE_ARRAYBUFFER_CALL", m, stack());
+        return m;
+      },
+      function(args, p, m) {
+        if (p && typeof p.then === "function") {
+          p.then(
+            b => emit("RESPONSE_ARRAYBUFFER_RESULT", {
+              ...m,
+              bytes: b.byteLength
+            }),
+            e => emit("RESPONSE_ARRAYBUFFER_ERROR", {
+              ...m,
+              error: String(e)
+            })
+          );
+        }
+      }
+    ) ? 1 : 0;
+
+    installed += patchMethod(
+      Response.prototype,
+      "blob",
+      function() {
+        const m = {url: this.url, status: this.status};
+        emit("RESPONSE_BLOB_CALL", m, stack());
+        return m;
+      },
+      function(args, p, m) {
+        if (p && typeof p.then === "function") {
+          p.then(
+            b => emit("RESPONSE_BLOB_RESULT", {
+              ...m,
+              bytes: b.size,
+              mime: b.type
+            }),
+            e => emit("RESPONSE_BLOB_ERROR", {
+              ...m,
+              error: String(e)
+            })
+          );
+        }
+      }
+    ) ? 1 : 0;
+
+    installed += patchMethod(
+      Response.prototype,
+      "clone",
+      function() {
+        const m = {url: this.url, status: this.status};
+        emit("RESPONSE_CLONE_CALL", m, stack());
+        return m;
+      }
+    ) ? 1 : 0;
+
+    try {
+      const d = Object.getOwnPropertyDescriptor(
+        Response.prototype, "body"
+      );
+
+      if (d?.get && d.configurable) {
+        Object.defineProperty(Response.prototype, "body", {
+          ...d,
+          get: function() {
+            emit("RESPONSE_BODY_GET", {
+              url: this.url,
+              status: this.status,
+              bodyUsed: this.bodyUsed
+            }, stack());
+
+            return d.get.call(this);
+          }
+        });
+
+        emit("HOOK_INSTALLED", {
+          target: "Response.prototype",
+          method: "body getter"
+        });
+
+        installed++;
+      }
+    } catch (e) {
+      emit("HOOK_FAILED", {
+        method: "Response.body",
+        error: String(e)
+      });
     }
   }
-  document.querySelectorAll("video,audio").forEach(observeMedia);
-  if(!window.__mainMediaObserver){
-    window.__mainMediaObserver=new MutationObserver(()=>document.querySelectorAll("video,audio").forEach(observeMedia));
-    window.__mainMediaObserver.observe(document.documentElement,{childList:true,subtree:true});
+
+  if (window.MediaSource) {
+    installed += patchMethod(
+      MediaSource.prototype,
+      "addSourceBuffer",
+      function(args) {
+        const m = {
+          mimeType: args[0],
+          mediaSourceState: this.readyState
+        };
+
+        emit("MSE_ADD_SOURCEBUFFER_REQUEST", m, stack());
+        return m;
+      },
+      function(args, sb, m) {
+        emit("MSE_SOURCEBUFFER_CREATED", {
+          ...m,
+          bufferType: sb?.constructor?.name
+        }, stack());
+
+        if (sb && !sb.__mainProbeEvents) {
+          try {
+            Object.defineProperty(sb, "__mainProbeEvents", {
+              value: true
+            });
+          } catch (_) {}
+
+          for (const ev of [
+            "updatestart", "update", "updateend", "error", "abort"
+          ]) {
+            sb.addEventListener(ev, () => {
+              emit("MSE_SOURCEBUFFER_" + ev.toUpperCase(), {
+                mimeType: m.mimeType,
+                updating: sb.updating,
+                buffered: ranges(sb.buffered)
+              });
+            });
+          }
+        }
+      }
+    ) ? 1 : 0;
+
+    installed += patchMethod(
+      MediaSource.prototype,
+      "endOfStream",
+      function(args) {
+        const m = {
+          error: args[0] ?? null,
+          state: this.readyState
+        };
+
+        emit("MSE_END_OF_STREAM_CALL", m, stack());
+        return m;
+      }
+    ) ? 1 : 0;
+
+    installed += patchMethod(
+      MediaSource.prototype,
+      "removeSourceBuffer",
+      function() {
+        const m = {};
+        emit("MSE_REMOVE_SOURCEBUFFER_CALL", m, stack());
+        return m;
+      }
+    ) ? 1 : 0;
   }
-  emit("HOOKS_READY",{installed,realm:"main page only",note:"No fetch/XHR request interception is installed by this page."});
+
+  if (window.SourceBuffer) {
+    installed += patchMethod(
+      SourceBuffer.prototype,
+      "appendBuffer",
+      function(args) {
+        const m = {
+          chunk: chunkInfo(args[0]),
+          updating: this.updating,
+          bufferedBefore: ranges(this.buffered)
+        };
+
+        emit("MSE_APPEND_BUFFER_CALL", m, stack());
+        return m;
+      }
+    ) ? 1 : 0;
+
+    installed += patchMethod(
+      SourceBuffer.prototype,
+      "remove",
+      function(args) {
+        const m = {
+          start: args[0],
+          end: args[1],
+          bufferedBefore: ranges(this.buffered)
+        };
+
+        emit("MSE_REMOVE_CALL", m, stack());
+        return m;
+      }
+    ) ? 1 : 0;
+
+    installed += patchMethod(
+      SourceBuffer.prototype,
+      "abort",
+      function() {
+        const m = {updating: this.updating};
+        emit("MSE_ABORT_CALL", m, stack());
+        return m;
+      }
+    ) ? 1 : 0;
+  }
+
+  if (window.HTMLMediaElement) {
+    for (const method of ["play", "pause", "load"]) {
+      installed += patchMethod(
+        HTMLMediaElement.prototype,
+        method,
+        function() {
+          const m = {
+            tag: this.tagName,
+            src: this.currentSrc || this.src || "",
+            currentTime: this.currentTime,
+            readyState: this.readyState,
+            buffered: ranges(this.buffered)
+          };
+
+          emit("MEDIA_" + method.toUpperCase() + "_CALL", m, stack());
+          return m;
+        }
+      ) ? 1 : 0;
+    }
+
+    for (const prop of ["src", "srcObject"]) {
+      try {
+        const d = Object.getOwnPropertyDescriptor(
+          HTMLMediaElement.prototype, prop
+        );
+
+        if (d?.set && d.configurable) {
+          Object.defineProperty(HTMLMediaElement.prototype, prop, {
+            ...d,
+            set: function(v) {
+              emit("MEDIA_" + prop.toUpperCase() + "_SET", {
+                tag: this.tagName,
+                value: prop === "src"
+                  ? String(v)
+                  : v?.constructor?.name || null
+              }, stack());
+
+              return d.set.call(this, v);
+            }
+          });
+
+          installed++;
+          emit("HOOK_INSTALLED", {
+            target: "HTMLMediaElement.prototype",
+            method: prop + " setter"
+          });
+        }
+      } catch (e) {
+        emit("HOOK_FAILED", {
+          method: "HTMLMediaElement." + prop,
+          error: String(e)
+        });
+      }
+    }
+  }
+
+  document.querySelectorAll("video,audio").forEach(observeMedia);
+
+  if (!window.__mainMediaObserver) {
+    window.__mainMediaObserver = new MutationObserver(() => {
+      document.querySelectorAll("video,audio").forEach(observeMedia);
+    });
+
+    window.__mainMediaObserver.observe(document.documentElement, {
+      childList: true,
+      subtree: true
+    });
+  }
+
+  emit("HOOKS_READY", {
+    installed,
+    realm: "main page only",
+    note: "No fetch/XHR request interception is installed."
+  });
 }
+
 installHooks();
 
-function extractId(value){
-  try{const u=new URL(value),h=u.hostname.toLowerCase();
-    if(h==="youtu.be")return u.pathname.split("/").filter(Boolean)[0]||null;
-    if(h==="youtube.com"||h.endsWith(".youtube.com")||h==="youtube-nocookie.com"||h.endsWith(".youtube-nocookie.com")){
-      if(u.pathname==="/watch")return u.searchParams.get("v");
-      const m=u.pathname.match(/^\/(?:embed|shorts|live)\/([^/?]+)/);return m?m[1]:null;
+function extractId(value) {
+  try {
+    const u = new URL(value);
+    const h = u.hostname.toLowerCase();
+
+    if (h === "youtu.be")
+      return u.pathname.split("/").filter(Boolean)[0] || null;
+
+    if (
+      h === "youtube.com" ||
+      h.endsWith(".youtube.com") ||
+      h === "youtube-nocookie.com" ||
+      h.endsWith(".youtube-nocookie.com")
+    ) {
+      if (u.pathname === "/watch")
+        return u.searchParams.get("v");
+
+      const m = u.pathname.match(/^\/(?:embed|shorts|live)\/([^/?]+)/);
+      return m ? m[1] : null;
     }
-  }catch(_){}return null;
+  } catch (_) {}
+
+  return null;
 }
-$("load").addEventListener("click",()=>{
-  const id=extractId($("url").value.trim());if(!id){alert("Enter a valid YouTube URL.");return;}
-  emit("PLAYER_LOAD",{videoId:id});
-  const box=$("player");box.replaceChildren();const f=document.createElement("iframe");
-  f.title="YouTube video";f.allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share";f.allowFullscreen=true;f.referrerPolicy="strict-origin-when-cross-origin";
-  f.src="https://www.youtube.com/embed/"+encodeURIComponent(id)+"?enablejsapi=1&playsinline=1&origin="+encodeURIComponent(location.origin);
-  f.addEventListener("load",()=>emit("IFRAME_LOAD",{note:"The iframe is not instrumented. These hooks remain exclusively in the main page realm."}));
+
+$("load").addEventListener("click", () => {
+  const id = extractId($("url").value.trim());
+
+  if (!id) {
+    alert("Enter a valid YouTube URL.");
+    return;
+  }
+
+  emit("PLAYER_LOAD", {videoId: id});
+
+  const box = $("player");
+  box.replaceChildren();
+
+  const f = document.createElement("iframe");
+  f.title = "YouTube video";
+  f.allow = "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share";
+  f.allowFullscreen = true;
+  f.referrerPolicy = "strict-origin-when-cross-origin";
+
+  f.addEventListener("load", () => {
+    emit("IFRAME_LOAD", {
+      note: "Iframe loaded; its internal JavaScript and media pipeline are not instrumented."
+    });
+
+    $("status").textContent =
+      "Iframe loaded. Play the video and inspect the main-page event log.";
+  });
+
+  f.src =
+    "https://www.youtube.com/embed/" +
+    encodeURIComponent(id) +
+    "?enablejsapi=1&playsinline=1&autoplay=1&origin=" +
+    encodeURIComponent(location.origin);
+
   box.appendChild(f);
-  $("status").textContent="Video iframe loaded. Now check whether any main-page STREAM_*, MSE_*, RESPONSE_*, or MEDIA_* hooks fire.";
+  $("status").textContent = "Loading YouTube iframe...";
 });
-$("clear").addEventListener("click",()=>{records.length=0;$("log").textContent="";emit("LOG_CLEARED");});
-$("export").addEventListener("click",()=>{const blob=new Blob([JSON.stringify(records,null,2)],{type:"application/json"});const u=URL.createObjectURL(blob);const a=document.createElement("a");a.href=u;a.download="main-page-media-lifecycle.json";a.click();setTimeout(()=>URL.revokeObjectURL(u),1000);});
-emit("READY",{realm:"main page",hooks:"ReadableStream, readers, Response body consumers, MediaSource, SourceBuffer, HTMLMediaElement",networkHooks:false});
+
+$("clear").addEventListener("click", () => {
+  records.length = 0;
+  $("log").textContent = "";
+  emit("LOG_CLEARED");
+});
+
+$("export").addEventListener("click", () => {
+  const blob = new Blob(
+    [JSON.stringify(records, null, 2)],
+    {type: "application/json"}
+  );
+
+  const u = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+
+  a.href = u;
+  a.download = "main-page-media-lifecycle.json";
+  a.click();
+
+  setTimeout(() => URL.revokeObjectURL(u), 1000);
+});
+
+emit("READY", {
+  realm: "main page",
+  hooks: [
+    "ReadableStream",
+    "ReadableStream readers",
+    "Response body consumers",
+    "MediaSource",
+    "SourceBuffer",
+    "HTMLMediaElement"
+  ],
+  networkHooks: false
+});
+
+// Create the YouTube iframe only after installing the hooks.
+$("load").click();
+
 })();
 </script>
 </body>

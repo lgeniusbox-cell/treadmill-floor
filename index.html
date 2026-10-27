@@ -1,417 +1,390 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>YouTube Network Inspector</title>
+<title>YouTube Media Pipeline Inspector</title>
 <style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
   body {
-    margin: 20px auto;
-    padding: 0 16px;
-    max-width: 1100px;
-    font: 14px system-ui, sans-serif;
-    background: #111827;
-    color: #e5e7eb;
+    margin: 20px auto; padding: 0 16px; max-width: 1180px;
+    font: 14px/1.5 system-ui, sans-serif;
+    background: #111827; color: #e5e7eb;
   }
-  input, button {
-    padding: 10px;
-    border-radius: 6px;
-    border: 1px solid #4b5563;
-    background: #1f2937;
-    color: white;
+  h1 { font-size: 1.45rem; margin-bottom: 6px; }
+  h2 { font-size: 1.05rem; margin-top: 22px; }
+  .note { color: #aab4c4; }
+  .controls { display:flex; flex-wrap:wrap; gap:8px; margin:12px 0; align-items:center; }
+  input[type="text"], button {
+    padding:10px; border-radius:6px; border:1px solid #4b5563;
+    background:#1f2937; color:white;
   }
-  input { flex: 1; min-width: 180px; }
-  button { cursor: pointer; }
-  .controls {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    margin: 12px 0;
-  }
-  #player {
-    width: 100%;
-    aspect-ratio: 16 / 9;
-    background: black;
-  }
-  iframe { width: 100%; height: 100%; border: 0; }
+  input[type="text"] { flex:1; min-width:220px; }
+  button { cursor:pointer; }
+  button:hover { background:#374151; }
+  label { display:inline-flex; align-items:center; gap:7px; }
+  #player { width:100%; aspect-ratio:16/9; background:#000; border:1px solid #374151; }
+  iframe { width:100%; height:100%; border:0; }
+  #status { padding:9px 11px; background:#1f2937; border-radius:6px; margin:10px 0; }
   #log {
-    white-space: pre-wrap;
-    overflow-wrap: anywhere;
-    height: 360px;
-    overflow: auto;
-    background: #030712;
-    padding: 12px;
-    border: 1px solid #374151;
-    border-radius: 8px;
-    font: 12px/1.5 monospace;
+    white-space:pre-wrap; overflow-wrap:anywhere; height:420px; overflow:auto;
+    background:#030712; padding:12px; border:1px solid #374151; border-radius:8px;
+    font:12px/1.5 ui-monospace, SFMono-Regular, Consolas, monospace;
   }
-  label { display: inline-flex; align-items: center; gap: 6px; }
-  .note { color: #9ca3af; line-height: 1.5; }
+  code { color:#bfdbfe; }
 </style>
 </head>
 <body>
-
-<h2>YouTube Network Inspector</h2>
+<h1>YouTube Media Pipeline Inspector</h1>
+<p class="note">
+  Logs parent-page fetch/XHR and resource timing, YouTube iframe lifecycle,
+  and media/MSE events only in contexts where this script can run.
+  A parent page cannot directly inspect the cross-origin YouTube iframe.
+</p>
 
 <div class="controls">
-  <input id="url" placeholder="Paste a YouTube URL">
+  <input id="url" type="text" placeholder="Paste a YouTube URL (watch, shorts, youtu.be, embed)">
   <button id="load">Load video</button>
 </div>
 
 <div class="controls">
-  <label>
-    <input type="checkbox" id="capture">
-    Capture accessible response bodies (max 1 MiB each)
-  </label>
+  <label><input type="checkbox" id="capture"> Capture readable response previews (max 1 MiB per response)</label>
+  <label><input type="checkbox" id="probeParentMSE" checked> Probe MSE in this page context</label>
   <button id="export">Export log JSON</button>
   <button id="clear">Clear log</button>
 </div>
 
+<div id="status">Ready. Load a video, then inspect logs in this panel and DevTools.</div>
 <div id="player"></div>
 
-<p class="note">
-  Logs include requests observable by this page, timing entries,
-  and player events. Cross-origin iframe network responses may
-  not be visible to these hooks.
-</p>
-
-<h3>Network log</h3>
-<div id="log"></div>
+<h2>Network and media log</h2>
+<div id="log" aria-live="polite"></div>
 
 <script>
 (() => {
-  const logElement = document.getElementById("log");
-  const captureCheckbox = document.getElementById("capture");
+  "use strict";
 
+  const logElement = document.getElementById("log");
+  const statusElement = document.getElementById("status");
+  const captureCheckbox = document.getElementById("capture");
+  const probeParentMSECheckbox = document.getElementById("probeParentMSE");
   const records = [];
   const MAX_BODY = 1024 * 1024;
-  const MAX_RECORDS = 3000;
+  const MAX_RECORDS = 4000;
+  const MAX_VISIBLE_LINES = 1600;
 
-  function log(type, data) {
+  function log(type, data = {}) {
     const entry = {
       time: new Date().toISOString(),
+      perfMs: Number(performance.now().toFixed(2)),
+      context: location.origin,
       type,
       ...data
     };
-
     records.push(entry);
     if (records.length > MAX_RECORDS) records.shift();
-
-    console.log("[NET]", entry);
-
-    logElement.textContent +=
-      JSON.stringify(entry) + "\n";
-
-    // Keep the visible log bounded.
+    console.log("[MEDIA-INSPECTOR]", entry);
+    logElement.textContent += JSON.stringify(entry) + "\n";
     const lines = logElement.textContent.split("\n");
-    if (lines.length > 1200) {
-      logElement.textContent = lines.slice(-1000).join("\n");
+    if (lines.length > MAX_VISIBLE_LINES) {
+      logElement.textContent = lines.slice(-MAX_VISIBLE_LINES + 1).join("\n");
     }
-
     logElement.scrollTop = logElement.scrollHeight;
+    return entry;
   }
 
   function headersToObject(headers) {
-    const result = {};
-    try {
-      headers.forEach((value, name) => {
-        result[name] = value;
-      });
-    } catch (e) {}
-    return result;
+    const out = {};
+    try { headers.forEach((v, k) => out[k] = v); } catch (_) {}
+    return out;
   }
 
-  // Intercept fetch calls made in THIS JavaScript context.
-  const originalFetch = window.fetch.bind(window);
-
-  window.fetch = async function(input, init) {
-    const requestUrl =
-      typeof input === "string" ? input :
-      input instanceof URL ? input.href :
-      input.url;
-
-    const method =
-      (init && init.method) ||
-      (input instanceof Request ? input.method : "GET");
-
-    const started = performance.now();
-
-    log("FETCH_REQUEST", {
-      url: requestUrl,
-      method
-    });
-
+  function getRequestInfo(input, init) {
+    let url = "";
+    let method = (init && init.method) || "GET";
     try {
-      const response = await originalFetch(input, init);
-
-      const info = {
-        url: requestUrl,
-        method,
-        status: response.status,
-        responseType: response.type,
-        redirected: response.redirected,
-        finalUrl: response.url,
-        headers: headersToObject(response.headers),
-        durationMs: +(performance.now() - started).toFixed(2)
-      };
-
-      const lengthHeader =
-        response.headers.get("content-length");
-      const contentType =
-        response.headers.get("content-type") || "";
-
-      if (lengthHeader !== null) {
-        info.contentLengthHeader = lengthHeader;
+      if (typeof input === "string") url = input;
+      else if (input instanceof URL) url = input.href;
+      else if (input && typeof input.url === "string") {
+        url = input.url;
+        if (!(init && init.method) && input.method) method = input.method;
       }
+    } catch (_) {}
+    return { url, method };
+  }
 
-      // Opaque responses have no readable body or headers.
-      if (response.type === "opaque") {
-        info.bodyNote = "Opaque response; body inaccessible";
-      }
-
-      if (captureCheckbox.checked &&
-          response.type !== "opaque" &&
-          response.type !== "opaqueredirect" &&
-          response.body) {
-        const declaredLength = Number(lengthHeader);
-
-        if (declaredLength > MAX_BODY) {
-          info.bodyNote = "Skipped: declared body exceeds 1 MiB";
-        } else {
-          try {
-            const bytes = await response.clone().arrayBuffer();
-
-            if (bytes.byteLength <= MAX_BODY) {
-              info.bodyBytes = bytes.byteLength;
-
-              if (/^(text\/|application\/(json|.*xml|javascript))/
-                    .test(contentType)) {
-                info.bodyPreview = new TextDecoder().decode(
-                  bytes.slice(0, 4096)
-                );
-              } else {
-                info.bodyFirstBytesHex = Array.from(
-                  new Uint8Array(bytes).slice(0, 64)
-                ).map(b => b.toString(16).padStart(2, "0"))
-                 .join(" ");
-              }
-            } else {
-              info.bodyNote =
-                "Skipped: actual body exceeds 1 MiB";
-            }
-          } catch (e) {
-            info.bodyNote = "Body capture failed: " + e.message;
-          }
-        }
-      }
-
-      log("FETCH_RESPONSE", info);
-      return response;
-    } catch (error) {
-      log("FETCH_ERROR", {
-        url: requestUrl,
-        method,
-        error: String(error)
-      });
-      throw error;
-    }
-  };
-
-  // Intercept XMLHttpRequest in THIS context.
-  const originalOpen = XMLHttpRequest.prototype.open;
-  const originalSend = XMLHttpRequest.prototype.send;
-  const originalSetRequestHeader =
-    XMLHttpRequest.prototype.setRequestHeader;
-
-  XMLHttpRequest.prototype.open = function(
-    method, url, ...rest
-  ) {
-    this.__netInfo = {
-      method,
-      url: String(url),
-      headers: {}
-    };
-
-    return originalOpen.call(this, method, url, ...rest);
-  };
-
-  XMLHttpRequest.prototype.setRequestHeader = function(name, value) {
-    if (this.__netInfo) {
-      this.__netInfo.headers[name] = value;
-    }
-    return originalSetRequestHeader.call(this, name, value);
-  };
-
-  XMLHttpRequest.prototype.send = function(body) {
-    const xhr = this;
-    const info = xhr.__netInfo || {
-      method: "UNKNOWN",
-      url: ""
-    };
-
-    const started = performance.now();
-
-    log("XHR_REQUEST", {
-      ...info,
-      requestBodyType: body == null ? null : typeof body
-    });
-
-    xhr.addEventListener("loadend", function() {
-      const result = {
-        ...info,
-        status: xhr.status,
-        responseURL: xhr.responseURL,
-        responseType: xhr.responseType || "text",
-        responseHeaders: xhr.getAllResponseHeaders(),
-        durationMs: +(performance.now() - started).toFixed(2)
-      };
-
-      if (captureCheckbox.checked) {
-        try {
-          if (xhr.responseType === "arraybuffer" &&
-              xhr.response instanceof ArrayBuffer) {
-            const bytes = new Uint8Array(xhr.response);
-
-            result.bodyBytes = bytes.byteLength;
-
-            if (bytes.byteLength <= MAX_BODY) {
-              result.bodyFirstBytesHex = Array.from(
-                bytes.slice(0, 64)
-              ).map(b => b.toString(16).padStart(2, "0"))
-               .join(" ");
-            } else {
-              result.bodyNote = "Body too large to capture";
-            }
-          } else if (
-            xhr.responseType === "" ||
-            xhr.responseType === "text"
-          ) {
-            const text = xhr.responseText;
-            result.bodyChars = text.length;
-            result.bodyPreview = text.slice(0, 4096);
+  // Parent-context fetch hook. It does not hook requests inside a cross-origin iframe.
+  if (typeof window.fetch === "function") {
+    const originalFetch = window.fetch;
+    window.fetch = async function(input, init) {
+      const req = getRequestInfo(input, init);
+      const started = performance.now();
+      log("FETCH_REQUEST", req);
+      try {
+        const response = await originalFetch.apply(this, arguments);
+        const info = {
+          ...req, status: response.status, responseType: response.type,
+          redirected: response.redirected, finalUrl: response.url,
+          headers: headersToObject(response.headers),
+          durationMs: Number((performance.now() - started).toFixed(2))
+        };
+        const lengthHeader = response.headers.get("content-length");
+        const contentType = response.headers.get("content-type") || "";
+        if (lengthHeader !== null) info.contentLengthHeader = lengthHeader;
+        if (response.type === "opaque") {
+          info.bodyNote = "Opaque response; body is not readable in this context";
+        } else if (captureCheckbox.checked && response.body) {
+          const declaredLength = Number(lengthHeader);
+          if (Number.isFinite(declaredLength) && declaredLength > MAX_BODY) {
+            info.bodyNote = "Skipped: declared body exceeds 1 MiB";
           } else {
-            result.bodyNote =
-              "Preview not implemented for this XHR response type";
+            try {
+              const bytes = await response.clone().arrayBuffer();
+              info.bodyBytes = bytes.byteLength;
+              if (bytes.byteLength <= MAX_BODY) {
+                if (/^(text\/|application\/(json|.*xml|javascript))/i.test(contentType)) {
+                  info.bodyPreview = new TextDecoder().decode(bytes.slice(0, 4096));
+                } else {
+                  info.bodyFirstBytesHex = Array.from(new Uint8Array(bytes).slice(0, 64))
+                    .map(b => b.toString(16).padStart(2, "0")).join(" ");
+                }
+              } else {
+                info.bodyNote = "Skipped: actual body exceeds 1 MiB";
+              }
+            } catch (e) {
+              info.bodyNote = "Body capture failed: " + String(e);
+            }
           }
-        } catch (e) {
-          result.bodyNote = "Capture failed: " + e.message;
         }
+        log("FETCH_RESPONSE", info);
+        return response;
+      } catch (error) {
+        log("FETCH_ERROR", { ...req, durationMs: Number((performance.now() - started).toFixed(2)), error: String(error) });
+        throw error;
       }
+    };
+  }
 
-      log("XHR_RESPONSE", result);
-    }, { once: true });
+  // Parent-context XHR hook.
+  if (window.XMLHttpRequest) {
+    const originalOpen = XMLHttpRequest.prototype.open;
+    const originalSend = XMLHttpRequest.prototype.send;
+    const originalSetRequestHeader = XMLHttpRequest.prototype.setRequestHeader;
 
-    return originalSend.call(xhr, body);
-  };
+    XMLHttpRequest.prototype.open = function(method, url) {
+      this.__mediaInspectorInfo = { method: String(method), url: String(url), headers: {} };
+      return originalOpen.apply(this, arguments);
+    };
+    XMLHttpRequest.prototype.setRequestHeader = function(name, value) {
+      if (this.__mediaInspectorInfo) this.__mediaInspectorInfo.headers[name] = value;
+      return originalSetRequestHeader.apply(this, arguments);
+    };
+    XMLHttpRequest.prototype.send = function(body) {
+      const xhr = this;
+      const info = xhr.__mediaInspectorInfo || { method: "UNKNOWN", url: "", headers: {} };
+      const started = performance.now();
+      log("XHR_REQUEST", {
+        ...info,
+        requestBodyType: body == null ? null : typeof body
+      });
+      xhr.addEventListener("loadend", () => {
+        const result = {
+          ...info, status: xhr.status, responseURL: xhr.responseURL,
+          responseType: xhr.responseType || "text",
+          durationMs: Number((performance.now() - started).toFixed(2))
+        };
+        try { result.responseHeaders = xhr.getAllResponseHeaders(); } catch (_) {}
+        if (captureCheckbox.checked) {
+          try {
+            if (xhr.responseType === "arraybuffer" && xhr.response instanceof ArrayBuffer) {
+              result.bodyBytes = xhr.response.byteLength;
+              if (xhr.response.byteLength <= MAX_BODY) {
+                result.bodyFirstBytesHex = Array.from(new Uint8Array(xhr.response).slice(0, 64))
+                  .map(b => b.toString(16).padStart(2, "0")).join(" ");
+              } else result.bodyNote = "Body exceeds 1 MiB";
+            } else if (xhr.responseType === "" || xhr.responseType === "text") {
+              const text = xhr.responseText;
+              result.bodyChars = text.length;
+              result.bodyPreview = text.slice(0, 4096);
+            } else result.bodyNote = "Preview not implemented for this XHR response type";
+          } catch (e) { result.bodyNote = "Capture failed: " + String(e); }
+        }
+        log("XHR_RESPONSE", result);
+      }, { once: true });
+      return originalSend.apply(this, arguments);
+    };
+  }
 
-  // Observe resource URLs and timing visible to the parent page.
+  // Observe resources visible to this context. Cross-origin details may be restricted.
   try {
     const observer = new PerformanceObserver(list => {
       for (const entry of list.getEntries()) {
         log("RESOURCE_TIMING", {
           name: entry.name,
           initiatorType: entry.initiatorType,
-          durationMs: +entry.duration.toFixed(2),
+          durationMs: Number(entry.duration.toFixed(2)),
           transferSize: entry.transferSize,
           encodedBodySize: entry.encodedBodySize,
           decodedBodySize: entry.decodedBodySize
         });
       }
     });
-
     observer.observe({ type: "resource", buffered: true });
   } catch (e) {
     log("OBSERVER_ERROR", { error: String(e) });
   }
 
-  // Extract video IDs from common YouTube URL formats.
+  // MSE probe in this page's own JS context only. It cannot patch a cross-origin iframe.
+  function installMSEProbe() {
+    if (!probeParentMSECheckbox.checked || typeof MediaSource === "undefined") return;
+    if (MediaSource.prototype.__mediaInspectorPatched) return;
+    try {
+      const originalAdd = MediaSource.prototype.addSourceBuffer;
+      Object.defineProperty(MediaSource.prototype, "__mediaInspectorPatched", { value: true });
+      MediaSource.prototype.addSourceBuffer = function(mime) {
+        const sb = originalAdd.apply(this, arguments);
+        log("SOURCE_BUFFER_CREATED", { mime });
+        const originalAppend = sb.appendBuffer;
+        sb.appendBuffer = function(data) {
+          const bytes = data && typeof data.byteLength === "number" ? data.byteLength : null;
+          log("MSE_APPEND_START", {
+            mime, bytes, updating: sb.updating,
+            bufferedBefore: readRanges(sb.buffered)
+          });
+          try {
+            const result = originalAppend.apply(this, arguments);
+            log("MSE_APPEND_RETURN", { mime, bytes, updating: sb.updating });
+            return result;
+          } catch (e) {
+            log("MSE_APPEND_ERROR", { mime, bytes, error: String(e) });
+            throw e;
+          }
+        };
+        sb.addEventListener("updateend", () => log("MSE_UPDATE_END", {
+          mime, updating: sb.updating, buffered: readRanges(sb.buffered)
+        }));
+        sb.addEventListener("error", () => log("MSE_BUFFER_ERROR", { mime }));
+        return sb;
+      };
+      log("MSE_PROBE_INSTALLED", { note: "Only this JavaScript context" });
+    } catch (e) {
+      log("MSE_PROBE_ERROR", { error: String(e) });
+    }
+  }
+
+  function readRanges(ranges) {
+    const out = [];
+    try {
+      for (let i = 0; i < ranges.length; i++) {
+        out.push({ start: ranges.start(i), end: ranges.end(i) });
+      }
+    } catch (_) {}
+    return out;
+  }
+  installMSEProbe();
+  probeParentMSECheckbox.addEventListener("change", () => {
+    if (probeParentMSECheckbox.checked) {
+      installMSEProbe();
+      log("MSE_PROBE_NOTE", {
+        note: "Probe applies only to future SourceBuffers in the parent context; reload to install before page media setup."
+      });
+    }
+  });
+
+  // Observe video elements created in the parent page after the probe starts.
+  function observeVideo(video) {
+    if (video.__mediaInspectorObserved) return;
+    video.__mediaInspectorObserved = true;
+    const snapshot = () => ({
+      currentTime: Number(video.currentTime.toFixed(3)),
+      duration: Number.isFinite(video.duration) ? Number(video.duration.toFixed(3)) : null,
+      readyState: video.readyState,
+      networkState: video.networkState,
+      paused: video.paused,
+      playbackRate: video.playbackRate,
+      buffered: readRanges(video.buffered),
+      videoWidth: video.videoWidth,
+      videoHeight: video.videoHeight
+    });
+    for (const event of [
+      "loadstart", "loadedmetadata", "loadeddata", "canplay", "canplaythrough",
+      "play", "playing", "waiting", "stalled", "seeking", "seeked",
+      "progress", "suspend", "ended", "error"
+    ]) {
+      video.addEventListener(event, () => log("VIDEO_" + event.toUpperCase(), snapshot()));
+    }
+    log("VIDEO_FOUND", snapshot());
+  }
+  document.querySelectorAll("video").forEach(observeVideo);
+  try {
+    new MutationObserver(() => document.querySelectorAll("video").forEach(observeVideo))
+      .observe(document.documentElement, { childList: true, subtree: true });
+  } catch (_) {}
+
   function extractVideoId(value) {
     try {
       const u = new URL(value);
-
-      if (u.hostname === "youtu.be") {
-        return u.pathname.split("/").filter(Boolean)[0] || null;
-      }
-
-      if (
-        u.hostname === "youtube.com" ||
-        u.hostname.endsWith(".youtube.com") ||
-        u.hostname === "youtube-nocookie.com"
-      ) {
-        if (u.pathname === "/watch") {
-          return u.searchParams.get("v");
-        }
-
-        const match = u.pathname.match(
-          /^\/(?:embed|shorts|live)\/([^/?]+)/
-        );
-
+      const host = u.hostname.toLowerCase();
+      if (host === "youtu.be") return u.pathname.split("/").filter(Boolean)[0] || null;
+      if (host === "youtube.com" || host.endsWith(".youtube.com") ||
+          host === "youtube-nocookie.com" || host.endsWith(".youtube-nocookie.com")) {
+        if (u.pathname === "/watch") return u.searchParams.get("v");
+        const match = u.pathname.match(/^\/(?:embed|shorts|live)\/([^/?]+)/);
         return match ? match[1] : null;
       }
-    } catch (e) {}
-
+    } catch (_) {}
     return null;
   }
 
-  document.getElementById("load").onclick = () => {
-    const id = extractVideoId(
-      document.getElementById("url").value.trim()
-    );
-
+  document.getElementById("load").addEventListener("click", () => {
+    const input = document.getElementById("url").value.trim();
+    const id = extractVideoId(input);
     if (!id) {
       alert("Enter a valid YouTube video URL.");
       return;
     }
-
     log("PLAYER_LOAD", { videoId: id });
-
-    const player = document.getElementById("player");
-    player.replaceChildren();
-
+    statusElement.textContent =
+      "YouTube iframe loaded. Parent-page hooks do not see internal cross-origin iframe requests. Use DevTools' frame context/CDP for deeper inspection.";
+    const container = document.getElementById("player");
+    container.replaceChildren();
     const iframe = document.createElement("iframe");
-    iframe.allow =
-      "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share";
+    iframe.title = "YouTube video player";
+    iframe.allow = "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share";
     iframe.allowFullscreen = true;
-
-    iframe.src =
-      "https://www.youtube.com/embed/" +
-      encodeURIComponent(id) +
-      "?enablejsapi=1&playsinline=1&origin=" +
-      encodeURIComponent(location.origin);
-
-    iframe.onload = () => {
+    iframe.referrerPolicy = "strict-origin-when-cross-origin";
+    iframe.src = "https://www.youtube.com/embed/" + encodeURIComponent(id) +
+      "?enablejsapi=1&playsinline=1&origin=" + encodeURIComponent(location.origin);
+    iframe.addEventListener("load", () => {
       log("IFRAME_LOAD", {
         url: iframe.src,
-        note: "Iframe loaded; internal requests are not exposed by this event"
+        note: "Load event only; it does not expose the iframe's internal media requests or SourceBuffers."
       });
-    };
+    });
+    container.appendChild(iframe);
+  });
 
-    player.appendChild(iframe);
-  };
-
-  document.getElementById("clear").onclick = () => {
+  document.getElementById("clear").addEventListener("click", () => {
     records.length = 0;
     logElement.textContent = "";
-  };
+    log("LOG_CLEARED");
+  });
 
-  document.getElementById("export").onclick = () => {
-    const blob = new Blob(
-      [JSON.stringify(records, null, 2)],
-      { type: "application/json" }
-    );
-
+  document.getElementById("export").addEventListener("click", () => {
+    const blob = new Blob([JSON.stringify(records, null, 2)], { type: "application/json" });
     const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = "network-log.json";
+    const objectUrl = URL.createObjectURL(blob);
+    a.href = objectUrl;
+    a.download = "youtube-media-inspector-log.json";
     a.click();
-
-    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-  };
+    setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+  });
 
   log("READY", {
-    note: "Hooks installed in parent context before player creation",
-    origin: location.origin
+    note: "Hooks installed in parent context before iframe creation.",
+    origin: location.origin,
+    limitation: "Cross-origin iframe internals require DevTools/CDP instrumentation."
   });
 })();
 </script>

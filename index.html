@@ -1,759 +1,418 @@
 
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Main-Page Media Stream Probe</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>YouTube Network Inspector</title>
 <style>
-:root{color-scheme:dark}
-*{box-sizing:border-box}
-body{margin:0 auto;padding:22px 16px;max-width:1150px;font:14px/1.5 system-ui,sans-serif;background:#111827;color:#e5e7eb}
-h1{font-size:1.5rem;margin:0 0 6px}
-h2{font-size:1.05rem;margin-top:22px}
-.muted{color:#aab4c4}
-.controls{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0;align-items:center}
-input,button{font:inherit;color:#f9fafb;background:#1f2937;border:1px solid #4b5563;border-radius:6px;padding:10px}
-input[type=text]{flex:1;min-width:230px}
-button{cursor:pointer}
-button:hover{background:#374151}
-label{display:inline-flex;align-items:center;gap:7px}
-.status{padding:10px;background:#030712;border:1px solid #374151;border-radius:7px;margin:12px 0}
-.note{background:#1f2937;border:1px solid #374151;border-radius:8px;padding:12px}
-#player{aspect-ratio:16/9;width:100%;background:#000;border:1px solid #374151}
-iframe{width:100%;height:100%;border:0}
-#log{white-space:pre-wrap;overflow-wrap:anywhere;height:430px;overflow:auto;background:#030712;border:1px solid #374151;border-radius:8px;padding:12px;font:12px/1.5 ui-monospace,Consolas,monospace}
-.small{font-size:12px}
+  body {
+    margin: 20px auto;
+    padding: 0 16px;
+    max-width: 1100px;
+    font: 14px system-ui, sans-serif;
+    background: #111827;
+    color: #e5e7eb;
+  }
+  input, button {
+    padding: 10px;
+    border-radius: 6px;
+    border: 1px solid #4b5563;
+    background: #1f2937;
+    color: white;
+  }
+  input { flex: 1; min-width: 180px; }
+  button { cursor: pointer; }
+  .controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 12px 0;
+  }
+  #player {
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    background: black;
+  }
+  iframe { width: 100%; height: 100%; border: 0; }
+  #log {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    height: 360px;
+    overflow: auto;
+    background: #030712;
+    padding: 12px;
+    border: 1px solid #374151;
+    border-radius: 8px;
+    font: 12px/1.5 monospace;
+  }
+  label { display: inline-flex; align-items: center; gap: 6px; }
+  .note { color: #9ca3af; line-height: 1.5; }
 </style>
 </head>
 <body>
-<h1>Main-Page Media Stream Probe</h1>
-<p class="muted">This test monitors only the main page's JavaScript realm. It does not inject JavaScript into the YouTube iframe.</p>
 
-<div class="note">
-<strong>Test goal</strong>
-<p>Check whether media stream reads, Response body consumption, MediaSource appends, or media-element operations occur in the main page. If the log remains empty for these APIs during playback, these operations may be isolated inside the iframe. This does not prove that no media stream exists.</p>
+<h2>YouTube Network Inspector</h2>
+
+<div class="controls">
+  <input id="url" placeholder="Paste a YouTube URL">
+  <button id="load">Load video</button>
 </div>
 
 <div class="controls">
-  <input id="url" type="text" value="https://www.youtube.com/embed/4Fj0Qe7BY7k" placeholder="YouTube URL: watch, youtu.be, shorts, live, embed">
-  <button id="load">Load video</button>
-  <button id="export">Export JSON</button>
+  <label>
+    <input type="checkbox" id="capture">
+    Capture accessible response bodies (max 1 MiB each)
+  </label>
+  <button id="export">Export log JSON</button>
   <button id="clear">Clear log</button>
 </div>
 
-<div class="status" id="status">Installing main-page hooks...</div>
 <div id="player"></div>
 
-<h2>Main-page instrumentation log</h2>
-<div class="controls">
-  <label><input type="checkbox" id="stacks" checked> Include call stacks</label>
-  <label><input type="checkbox" id="compact" checked> Compact log</label>
-</div>
+<p class="note">
+  Logs include requests observable by this page, timing entries,
+  and player events. Cross-origin iframe network responses may
+  not be visible to these hooks.
+</p>
+
+<h3>Network log</h3>
 <div id="log"></div>
 
 <script>
 (() => {
-"use strict";
+  const logElement = document.getElementById("log");
+  const captureCheckbox = document.getElementById("capture");
 
-const $ = id => document.getElementById(id);
-const records = [];
-const MAX_RECORDS = 10000;
-const MAX_LINES = 1800;
-const seenReaders = new WeakSet();
-const seenMedia = new WeakSet();
+  const records = [];
+  const MAX_BODY = 1024 * 1024;
+  const MAX_RECORDS = 3000;
 
-function ranges(r) {
-  const a = [];
-  try {
-    for (let i = 0; i < r.length; i++) {
-      a.push({
-        start: +r.start(i).toFixed(3),
-        end: +r.end(i).toFixed(3)
-      });
-    }
-  } catch (_) {}
-  return a;
-}
-
-function chunkInfo(x) {
-  if (x == null) return {kind: String(x), bytes: null};
-
-  if (x instanceof ArrayBuffer)
-    return {kind: "ArrayBuffer", bytes: x.byteLength};
-
-  if (ArrayBuffer.isView(x))
-    return {
-      kind: x.constructor?.name || "ArrayBufferView",
-      bytes: x.byteLength,
-      byteOffset: x.byteOffset
+  function log(type, data) {
+    const entry = {
+      time: new Date().toISOString(),
+      type,
+      ...data
     };
 
-  if (typeof Blob !== "undefined" && x instanceof Blob)
-    return {kind: "Blob", bytes: x.size, mime: x.type};
+    records.push(entry);
+    if (records.length > MAX_RECORDS) records.shift();
 
-  return {
-    kind: x.constructor?.name || typeof x,
-    bytes: x.byteLength ?? null
-  };
-}
+    console.log("[NET]", entry);
 
-function stack() {
-  return new Error("API caller").stack;
-}
+    logElement.textContent +=
+      JSON.stringify(entry) + "\n";
 
-function emit(type, details = {}, callStack) {
-  const e = {
-    time: new Date().toISOString(),
-    perfMs: +performance.now().toFixed(3),
-    realm: "MAIN_PAGE",
-    page: location.href,
-    type,
-    ...details
-  };
+    // Keep the visible log bounded.
+    const lines = logElement.textContent.split("\n");
+    if (lines.length > 1200) {
+      logElement.textContent = lines.slice(-1000).join("\n");
+    }
 
-  if ($("stacks").checked && callStack) e.stack = callStack;
+    logElement.scrollTop = logElement.scrollHeight;
+  }
 
-  records.push(e);
-  if (records.length > MAX_RECORDS) records.shift();
+  function headersToObject(headers) {
+    const result = {};
+    try {
+      headers.forEach((value, name) => {
+        result[name] = value;
+      });
+    } catch (e) {}
+    return result;
+  }
 
-  console.log("[MAIN-MEDIA-PROBE]", e);
+  // Intercept fetch calls made in THIS JavaScript context.
+  const originalFetch = window.fetch.bind(window);
 
-  const line = $("compact").checked
-    ? JSON.stringify(e)
-    : JSON.stringify(e, null, 2);
+  window.fetch = async function(input, init) {
+    const requestUrl =
+      typeof input === "string" ? input :
+      input instanceof URL ? input.href :
+      input.url;
 
-  $("log").textContent += line + "\n";
+    const method =
+      (init && init.method) ||
+      (input instanceof Request ? input.method : "GET");
 
-  const lines = $("log").textContent.split("\n");
-  if (lines.length > MAX_LINES)
-    $("log").textContent = lines.slice(-MAX_LINES + 1).join("\n");
+    const started = performance.now();
 
-  $("log").scrollTop = $("log").scrollHeight;
-}
-
-function patchMethod(proto, name, before, after) {
-  if (!proto) return false;
-
-  const d = Object.getOwnPropertyDescriptor(proto, name);
-  if (!d || typeof d.value !== "function") return false;
-
-  const original = d.value;
-
-  try {
-    Object.defineProperty(proto, name, {
-      ...d,
-      value: function(...args) {
-        let meta;
-
-        try {
-          if (before) meta = before.call(this, args);
-        } catch (e) {
-          emit("HOOK_ERROR", {method: name, error: String(e)});
-        }
-
-        let result;
-
-        try {
-          result = original.apply(this, args);
-        } catch (e) {
-          emit("API_THROW", {
-            method: name,
-            meta,
-            error: String(e)
-          }, stack());
-          throw e;
-        }
-
-        try {
-          if (after) after.call(this, args, result, meta);
-        } catch (e) {
-          emit("HOOK_ERROR", {method: name, error: String(e)});
-        }
-
-        return result;
-      }
+    log("FETCH_REQUEST", {
+      url: requestUrl,
+      method
     });
-
-    emit("HOOK_INSTALLED", {
-      target: proto.constructor?.name || "prototype",
-      method: name
-    });
-
-    return true;
-  } catch (e) {
-    emit("HOOK_FAILED", {method: name, error: String(e)});
-    return false;
-  }
-}
-
-function observeReader(reader, sourceLabel) {
-  if (!reader || seenReaders.has(reader)) return;
-
-  seenReaders.add(reader);
-
-  emit("STREAM_READER_CREATED", {
-    sourceLabel,
-    readerType: reader.constructor?.name || "unknown"
-  }, stack());
-}
-
-function observeMedia(el) {
-  if (!el || seenMedia.has(el)) return;
-
-  seenMedia.add(el);
-
-  const snap = () => ({
-    tag: el.tagName,
-    id: el.id || null,
-    className: typeof el.className === "string" ? el.className : null,
-    src: el.currentSrc || el.src || "",
-    srcObjectType: el.srcObject?.constructor?.name || null,
-    currentTime: Number.isFinite(el.currentTime)
-      ? +el.currentTime.toFixed(3) : null,
-    readyState: el.readyState,
-    networkState: el.networkState,
-    paused: el.paused,
-    playbackRate: el.playbackRate,
-    videoWidth: el.videoWidth || 0,
-    videoHeight: el.videoHeight || 0,
-    buffered: ranges(el.buffered),
-    seekable: ranges(el.seekable)
-  });
-
-  emit("MEDIA_ELEMENT_FOUND", snap(), stack());
-
-  const events = [
-    "loadstart", "loadedmetadata", "loadeddata", "canplay",
-    "canplaythrough", "play", "playing", "pause", "waiting",
-    "stalled", "suspend", "progress", "seeking", "seeked",
-    "timeupdate", "ended", "error", "emptied"
-  ];
-
-  for (const ev of events) {
-    el.addEventListener(ev, () => {
-      emit("MEDIA_EVENT_" + ev.toUpperCase(), snap());
-    });
-  }
-}
-
-function installHooks() {
-  let installed = 0;
-
-  if (window.ReadableStream) {
-    installed += patchMethod(
-      ReadableStream.prototype,
-      "getReader",
-      function(args) {
-        const m = {
-          streamType: this.constructor?.name || "ReadableStream",
-          locked: this.locked,
-          options: args[0] ?? null
-        };
-
-        emit("STREAM_GET_READER_REQUEST", m, stack());
-        return m;
-      },
-      function(args, reader, m) {
-        observeReader(reader, m.streamType);
-
-        emit("STREAM_GET_READER_RETURN", {
-          streamType: m.streamType,
-          readerType: reader?.constructor?.name
-        });
-      }
-    ) ? 1 : 0;
-
-    installed += patchMethod(
-      ReadableStream.prototype,
-      "tee",
-      function() {
-        const m = {
-          streamType: this.constructor?.name || "ReadableStream",
-          locked: this.locked
-        };
-
-        emit("STREAM_TEE_CALL", m, stack());
-        return m;
-      }
-    ) ? 1 : 0;
-
-    installed += patchMethod(
-      ReadableStream.prototype,
-      "pipeTo",
-      function(args) {
-        const m = {
-          destinationType: args[0]?.constructor?.name || null
-        };
-
-        emit("STREAM_PIPE_TO_CALL", m, stack());
-        return m;
-      }
-    ) ? 1 : 0;
-
-    installed += patchMethod(
-      ReadableStream.prototype,
-      "pipeThrough",
-      function(args) {
-        const m = {
-          transformType: args[0]?.constructor?.name || null
-        };
-
-        emit("STREAM_PIPE_THROUGH_CALL", m, stack());
-        return m;
-      }
-    ) ? 1 : 0;
-  }
-
-  if (window.ReadableStreamDefaultReader) {
-    installed += patchMethod(
-      ReadableStreamDefaultReader.prototype,
-      "read",
-      function() {
-        const m = {
-          readerType: this.constructor?.name || "ReadableStreamDefaultReader"
-        };
-
-        emit("STREAM_READ_REQUEST", m, stack());
-        return m;
-      },
-      function(args, promise, m) {
-        if (promise && typeof promise.then === "function") {
-          promise.then(
-            result => emit("STREAM_READ_RESULT", {
-              ...m,
-              done: result.done,
-              chunk: chunkInfo(result.value)
-            }),
-            err => emit("STREAM_READ_REJECTED", {
-              ...m,
-              error: String(err)
-            })
-          );
-        }
-      }
-    ) ? 1 : 0;
-
-    installed += patchMethod(
-      ReadableStreamDefaultReader.prototype,
-      "cancel",
-      function(args) {
-        const m = {
-          reason: args[0] === undefined ? null : String(args[0])
-        };
-
-        emit("STREAM_READER_CANCEL", m, stack());
-        return m;
-      }
-    ) ? 1 : 0;
-  }
-
-  if (window.ReadableStreamBYOBReader) {
-    installed += patchMethod(
-      ReadableStreamBYOBReader.prototype,
-      "read",
-      function(args) {
-        const m = {view: chunkInfo(args[0])};
-
-        emit("BYOB_READ_REQUEST", m, stack());
-        return m;
-      },
-      function(args, promise, m) {
-        if (promise && typeof promise.then === "function") {
-          promise.then(
-            r => emit("BYOB_READ_RESULT", {
-              ...m,
-              done: r.done,
-              chunk: chunkInfo(r.value)
-            }),
-            e => emit("BYOB_READ_REJECTED", {error: String(e)})
-          );
-        }
-      }
-    ) ? 1 : 0;
-  }
-
-  if (window.Response) {
-    installed += patchMethod(
-      Response.prototype,
-      "arrayBuffer",
-      function() {
-        const m = {url: this.url, status: this.status};
-        emit("RESPONSE_ARRAYBUFFER_CALL", m, stack());
-        return m;
-      },
-      function(args, p, m) {
-        if (p && typeof p.then === "function") {
-          p.then(
-            b => emit("RESPONSE_ARRAYBUFFER_RESULT", {
-              ...m,
-              bytes: b.byteLength
-            }),
-            e => emit("RESPONSE_ARRAYBUFFER_ERROR", {
-              ...m,
-              error: String(e)
-            })
-          );
-        }
-      }
-    ) ? 1 : 0;
-
-    installed += patchMethod(
-      Response.prototype,
-      "blob",
-      function() {
-        const m = {url: this.url, status: this.status};
-        emit("RESPONSE_BLOB_CALL", m, stack());
-        return m;
-      },
-      function(args, p, m) {
-        if (p && typeof p.then === "function") {
-          p.then(
-            b => emit("RESPONSE_BLOB_RESULT", {
-              ...m,
-              bytes: b.size,
-              mime: b.type
-            }),
-            e => emit("RESPONSE_BLOB_ERROR", {
-              ...m,
-              error: String(e)
-            })
-          );
-        }
-      }
-    ) ? 1 : 0;
-
-    installed += patchMethod(
-      Response.prototype,
-      "clone",
-      function() {
-        const m = {url: this.url, status: this.status};
-        emit("RESPONSE_CLONE_CALL", m, stack());
-        return m;
-      }
-    ) ? 1 : 0;
 
     try {
-      const d = Object.getOwnPropertyDescriptor(
-        Response.prototype, "body"
-      );
+      const response = await originalFetch(input, init);
 
-      if (d?.get && d.configurable) {
-        Object.defineProperty(Response.prototype, "body", {
-          ...d,
-          get: function() {
-            emit("RESPONSE_BODY_GET", {
-              url: this.url,
-              status: this.status,
-              bodyUsed: this.bodyUsed
-            }, stack());
-
-            return d.get.call(this);
-          }
-        });
-
-        emit("HOOK_INSTALLED", {
-          target: "Response.prototype",
-          method: "body getter"
-        });
-
-        installed++;
-      }
-    } catch (e) {
-      emit("HOOK_FAILED", {
-        method: "Response.body",
-        error: String(e)
-      });
-    }
-  }
-
-  if (window.MediaSource) {
-    installed += patchMethod(
-      MediaSource.prototype,
-      "addSourceBuffer",
-      function(args) {
-        const m = {
-          mimeType: args[0],
-          mediaSourceState: this.readyState
-        };
-
-        emit("MSE_ADD_SOURCEBUFFER_REQUEST", m, stack());
-        return m;
-      },
-      function(args, sb, m) {
-        emit("MSE_SOURCEBUFFER_CREATED", {
-          ...m,
-          bufferType: sb?.constructor?.name
-        }, stack());
-
-        if (sb && !sb.__mainProbeEvents) {
-          try {
-            Object.defineProperty(sb, "__mainProbeEvents", {
-              value: true
-            });
-          } catch (_) {}
-
-          for (const ev of [
-            "updatestart", "update", "updateend", "error", "abort"
-          ]) {
-            sb.addEventListener(ev, () => {
-              emit("MSE_SOURCEBUFFER_" + ev.toUpperCase(), {
-                mimeType: m.mimeType,
-                updating: sb.updating,
-                buffered: ranges(sb.buffered)
-              });
-            });
-          }
-        }
-      }
-    ) ? 1 : 0;
-
-    installed += patchMethod(
-      MediaSource.prototype,
-      "endOfStream",
-      function(args) {
-        const m = {
-          error: args[0] ?? null,
-          state: this.readyState
-        };
-
-        emit("MSE_END_OF_STREAM_CALL", m, stack());
-        return m;
-      }
-    ) ? 1 : 0;
-
-    installed += patchMethod(
-      MediaSource.prototype,
-      "removeSourceBuffer",
-      function() {
-        const m = {};
-        emit("MSE_REMOVE_SOURCEBUFFER_CALL", m, stack());
-        return m;
-      }
-    ) ? 1 : 0;
-  }
-
-  if (window.SourceBuffer) {
-    installed += patchMethod(
-      SourceBuffer.prototype,
-      "appendBuffer",
-      function(args) {
-        const m = {
-          chunk: chunkInfo(args[0]),
-          updating: this.updating,
-          bufferedBefore: ranges(this.buffered)
-        };
-
-        emit("MSE_APPEND_BUFFER_CALL", m, stack());
-        return m;
-      }
-    ) ? 1 : 0;
-
-    installed += patchMethod(
-      SourceBuffer.prototype,
-      "remove",
-      function(args) {
-        const m = {
-          start: args[0],
-          end: args[1],
-          bufferedBefore: ranges(this.buffered)
-        };
-
-        emit("MSE_REMOVE_CALL", m, stack());
-        return m;
-      }
-    ) ? 1 : 0;
-
-    installed += patchMethod(
-      SourceBuffer.prototype,
-      "abort",
-      function() {
-        const m = {updating: this.updating};
-        emit("MSE_ABORT_CALL", m, stack());
-        return m;
-      }
-    ) ? 1 : 0;
-  }
-
-  if (window.HTMLMediaElement) {
-    for (const method of ["play", "pause", "load"]) {
-      installed += patchMethod(
-        HTMLMediaElement.prototype,
+      const info = {
+        url: requestUrl,
         method,
-        function() {
-          const m = {
-            tag: this.tagName,
-            src: this.currentSrc || this.src || "",
-            currentTime: this.currentTime,
-            readyState: this.readyState,
-            buffered: ranges(this.buffered)
-          };
+        status: response.status,
+        responseType: response.type,
+        redirected: response.redirected,
+        finalUrl: response.url,
+        headers: headersToObject(response.headers),
+        durationMs: +(performance.now() - started).toFixed(2)
+      };
 
-          emit("MEDIA_" + method.toUpperCase() + "_CALL", m, stack());
-          return m;
+      const lengthHeader =
+        response.headers.get("content-length");
+      const contentType =
+        response.headers.get("content-type") || "";
+
+      if (lengthHeader !== null) {
+        info.contentLengthHeader = lengthHeader;
+      }
+
+      // Opaque responses have no readable body or headers.
+      if (response.type === "opaque") {
+        info.bodyNote = "Opaque response; body inaccessible";
+      }
+
+      if (captureCheckbox.checked &&
+          response.type !== "opaque" &&
+          response.type !== "opaqueredirect" &&
+          response.body) {
+        const declaredLength = Number(lengthHeader);
+
+        if (declaredLength > MAX_BODY) {
+          info.bodyNote = "Skipped: declared body exceeds 1 MiB";
+        } else {
+          try {
+            const bytes = await response.clone().arrayBuffer();
+
+            if (bytes.byteLength <= MAX_BODY) {
+              info.bodyBytes = bytes.byteLength;
+
+              if (/^(text\/|application\/(json|.*xml|javascript))/
+                    .test(contentType)) {
+                info.bodyPreview = new TextDecoder().decode(
+                  bytes.slice(0, 4096)
+                );
+              } else {
+                info.bodyFirstBytesHex = Array.from(
+                  new Uint8Array(bytes).slice(0, 64)
+                ).map(b => b.toString(16).padStart(2, "0"))
+                 .join(" ");
+              }
+            } else {
+              info.bodyNote =
+                "Skipped: actual body exceeds 1 MiB";
+            }
+          } catch (e) {
+            info.bodyNote = "Body capture failed: " + e.message;
+          }
         }
-      ) ? 1 : 0;
-    }
+      }
 
-    for (const prop of ["src", "srcObject"]) {
-      try {
-        const d = Object.getOwnPropertyDescriptor(
-          HTMLMediaElement.prototype, prop
+      log("FETCH_RESPONSE", info);
+      return response;
+    } catch (error) {
+      log("FETCH_ERROR", {
+        url: requestUrl,
+        method,
+        error: String(error)
+      });
+      throw error;
+    }
+  };
+
+  // Intercept XMLHttpRequest in THIS context.
+  const originalOpen = XMLHttpRequest.prototype.open;
+  const originalSend = XMLHttpRequest.prototype.send;
+  const originalSetRequestHeader =
+    XMLHttpRequest.prototype.setRequestHeader;
+
+  XMLHttpRequest.prototype.open = function(
+    method, url, ...rest
+  ) {
+    this.__netInfo = {
+      method,
+      url: String(url),
+      headers: {}
+    };
+
+    return originalOpen.call(this, method, url, ...rest);
+  };
+
+  XMLHttpRequest.prototype.setRequestHeader = function(name, value) {
+    if (this.__netInfo) {
+      this.__netInfo.headers[name] = value;
+    }
+    return originalSetRequestHeader.call(this, name, value);
+  };
+
+  XMLHttpRequest.prototype.send = function(body) {
+    const xhr = this;
+    const info = xhr.__netInfo || {
+      method: "UNKNOWN",
+      url: ""
+    };
+
+    const started = performance.now();
+
+    log("XHR_REQUEST", {
+      ...info,
+      requestBodyType: body == null ? null : typeof body
+    });
+
+    xhr.addEventListener("loadend", function() {
+      const result = {
+        ...info,
+        status: xhr.status,
+        responseURL: xhr.responseURL,
+        responseType: xhr.responseType || "text",
+        responseHeaders: xhr.getAllResponseHeaders(),
+        durationMs: +(performance.now() - started).toFixed(2)
+      };
+
+      if (captureCheckbox.checked) {
+        try {
+          if (xhr.responseType === "arraybuffer" &&
+              xhr.response instanceof ArrayBuffer) {
+            const bytes = new Uint8Array(xhr.response);
+
+            result.bodyBytes = bytes.byteLength;
+
+            if (bytes.byteLength <= MAX_BODY) {
+              result.bodyFirstBytesHex = Array.from(
+                bytes.slice(0, 64)
+              ).map(b => b.toString(16).padStart(2, "0"))
+               .join(" ");
+            } else {
+              result.bodyNote = "Body too large to capture";
+            }
+          } else if (
+            xhr.responseType === "" ||
+            xhr.responseType === "text"
+          ) {
+            const text = xhr.responseText;
+            result.bodyChars = text.length;
+            result.bodyPreview = text.slice(0, 4096);
+          } else {
+            result.bodyNote =
+              "Preview not implemented for this XHR response type";
+          }
+        } catch (e) {
+          result.bodyNote = "Capture failed: " + e.message;
+        }
+      }
+
+      log("XHR_RESPONSE", result);
+    }, { once: true });
+
+    return originalSend.call(xhr, body);
+  };
+
+  // Observe resource URLs and timing visible to the parent page.
+  try {
+    const observer = new PerformanceObserver(list => {
+      for (const entry of list.getEntries()) {
+        log("RESOURCE_TIMING", {
+          name: entry.name,
+          initiatorType: entry.initiatorType,
+          durationMs: +entry.duration.toFixed(2),
+          transferSize: entry.transferSize,
+          encodedBodySize: entry.encodedBodySize,
+          decodedBodySize: entry.decodedBodySize
+        });
+      }
+    });
+
+    observer.observe({ type: "resource", buffered: true });
+  } catch (e) {
+    log("OBSERVER_ERROR", { error: String(e) });
+  }
+
+  // Extract video IDs from common YouTube URL formats.
+  function extractVideoId(value) {
+    try {
+      const u = new URL(value);
+
+      if (u.hostname === "youtu.be") {
+        return u.pathname.split("/").filter(Boolean)[0] || null;
+      }
+
+      if (
+        u.hostname === "youtube.com" ||
+        u.hostname.endsWith(".youtube.com") ||
+        u.hostname === "youtube-nocookie.com"
+      ) {
+        if (u.pathname === "/watch") {
+          return u.searchParams.get("v");
+        }
+
+        const match = u.pathname.match(
+          /^\/(?:embed|shorts|live)\/([^/?]+)/
         );
 
-        if (d?.set && d.configurable) {
-          Object.defineProperty(HTMLMediaElement.prototype, prop, {
-            ...d,
-            set: function(v) {
-              emit("MEDIA_" + prop.toUpperCase() + "_SET", {
-                tag: this.tagName,
-                value: prop === "src"
-                  ? String(v)
-                  : v?.constructor?.name || null
-              }, stack());
-
-              return d.set.call(this, v);
-            }
-          });
-
-          installed++;
-          emit("HOOK_INSTALLED", {
-            target: "HTMLMediaElement.prototype",
-            method: prop + " setter"
-          });
-        }
-      } catch (e) {
-        emit("HOOK_FAILED", {
-          method: "HTMLMediaElement." + prop,
-          error: String(e)
-        });
+        return match ? match[1] : null;
       }
+    } catch (e) {}
+
+    return null;
+  }
+
+  document.getElementById("load").onclick = () => {
+    const id = extractVideoId(
+      document.getElementById("url").value.trim()
+    );
+
+    if (!id) {
+      alert("Enter a valid YouTube video URL.");
+      return;
     }
-  }
 
-  document.querySelectorAll("video,audio").forEach(observeMedia);
+    log("PLAYER_LOAD", { videoId: id });
 
-  if (!window.__mainMediaObserver) {
-    window.__mainMediaObserver = new MutationObserver(() => {
-      document.querySelectorAll("video,audio").forEach(observeMedia);
-    });
+    const player = document.getElementById("player");
+    player.replaceChildren();
 
-    window.__mainMediaObserver.observe(document.documentElement, {
-      childList: true,
-      subtree: true
-    });
-  }
+    const iframe = document.createElement("iframe");
+    iframe.allow =
+      "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share";
+    iframe.allowFullscreen = true;
 
-  emit("HOOKS_READY", {
-    installed,
-    realm: "main page only",
-    note: "No fetch/XHR request interception is installed."
+    iframe.src =
+      "https://www.youtube.com/embed/" +
+      encodeURIComponent(id) +
+      "?enablejsapi=1&playsinline=1&origin=" +
+      encodeURIComponent(location.origin);
+
+    iframe.onload = () => {
+      log("IFRAME_LOAD", {
+        url: iframe.src,
+        note: "Iframe loaded; internal requests are not exposed by this event"
+      });
+    };
+
+    player.appendChild(iframe);
+  };
+
+  document.getElementById("clear").onclick = () => {
+    records.length = 0;
+    logElement.textContent = "";
+  };
+
+  document.getElementById("export").onclick = () => {
+    const blob = new Blob(
+      [JSON.stringify(records, null, 2)],
+      { type: "application/json" }
+    );
+
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "network-log.json";
+    a.click();
+
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  };
+
+  log("READY", {
+    note: "Hooks installed in parent context before player creation",
+    origin: location.origin
   });
-}
-
-installHooks();
-
-function extractId(value) {
-  try {
-    const u = new URL(value);
-    const h = u.hostname.toLowerCase();
-
-    if (h === "youtu.be")
-      return u.pathname.split("/").filter(Boolean)[0] || null;
-
-    if (
-      h === "youtube.com" ||
-      h.endsWith(".youtube.com") ||
-      h === "youtube-nocookie.com" ||
-      h.endsWith(".youtube-nocookie.com")
-    ) {
-      if (u.pathname === "/watch")
-        return u.searchParams.get("v");
-
-      const m = u.pathname.match(/^\/(?:embed|shorts|live)\/([^/?]+)/);
-      return m ? m[1] : null;
-    }
-  } catch (_) {}
-
-  return null;
-}
-
-$("load").addEventListener("click", () => {
-  const id = extractId($("url").value.trim());
-
-  if (!id) {
-    alert("Enter a valid YouTube URL.");
-    return;
-  }
-
-  emit("PLAYER_LOAD", {videoId: id});
-
-  const box = $("player");
-  box.replaceChildren();
-
-  const f = document.createElement("iframe");
-  f.title = "YouTube video";
-  f.allow = "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share";
-  f.allowFullscreen = true;
-  f.referrerPolicy = "strict-origin-when-cross-origin";
-
-  f.addEventListener("load", () => {
-    emit("IFRAME_LOAD", {
-      note: "Iframe loaded; its internal JavaScript and media pipeline are not instrumented."
-    });
-
-    $("status").textContent =
-      "Iframe loaded. Play the video and inspect the main-page event log.";
-  });
-
-  f.src =
-    "https://www.youtube.com/embed/" +
-    encodeURIComponent(id) +
-    "?enablejsapi=1&playsinline=1&autoplay=1&origin=" +
-    encodeURIComponent(location.origin);
-
-  box.appendChild(f);
-  $("status").textContent = "Loading YouTube iframe...";
-});
-
-$("clear").addEventListener("click", () => {
-  records.length = 0;
-  $("log").textContent = "";
-  emit("LOG_CLEARED");
-});
-
-$("export").addEventListener("click", () => {
-  const blob = new Blob(
-    [JSON.stringify(records, null, 2)],
-    {type: "application/json"}
-  );
-
-  const u = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-
-  a.href = u;
-  a.download = "main-page-media-lifecycle.json";
-  a.click();
-
-  setTimeout(() => URL.revokeObjectURL(u), 1000);
-});
-
-emit("READY", {
-  realm: "main page",
-  hooks: [
-    "ReadableStream",
-    "ReadableStream readers",
-    "Response body consumers",
-    "MediaSource",
-    "SourceBuffer",
-    "HTMLMediaElement"
-  ],
-  networkHooks: false
-});
-
-// Create the YouTube iframe only after installing the hooks.
-$("load").click();
-
 })();
 </script>
 </body>

@@ -131,10 +131,10 @@ function installHooks(){
   }
   if(window.Response){
     installed+=patchMethod(Response.prototype,"arrayBuffer",function(){const m={url:this.url,status:this.status};emit("RESPONSE_ARRAYBUFFER_CALL",m,stack());return m;},function(args,p,m){
-      if(p&&typeof p.then==="function")p.then(b=>emit("RESPONSE_ARRAYBUFFER_RESULT",{...m,bytes:b.byteLength}),e=>emit("RESPONSE_ARRAYBUFFER_ERROR",{...m,error:String(e)});
+      if(p&&typeof p.then==="function")p.then(b=>emit("RESPONSE_ARRAYBUFFER_RESULT",{...m,bytes:b.byteLength}),e=>emit("RESPONSE_ARRAYBUFFER_ERROR",{...m,error:String(e)}));
     })?1:0;
     installed+=patchMethod(Response.prototype,"blob",function(){const m={url:this.url,status:this.status};emit("RESPONSE_BLOB_CALL",m,stack());return m;},function(args,p,m){
-      if(p&&typeof p.then==="function")p.then(b=>emit("RESPONSE_BLOB_RESULT",{...m,bytes:b.size,mime:b.type}),e=>emit("RESPONSE_BLOB_ERROR",{...m,error:String(e)});
+      if(p&&typeof p.then==="function")p.then(b=>emit("RESPONSE_BLOB_RESULT",{...m,bytes:b.size,mime:b.type}),e=>emit("RESPONSE_BLOB_ERROR",{...m,error:String(e)}));
     })?1:0;
     installed+=patchMethod(Response.prototype,"clone",function(){const m={url:this.url,status:this.status};emit("RESPONSE_CLONE_CALL",m,stack());return m;})?1:0;
     try {
